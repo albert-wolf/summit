@@ -1,0 +1,34 @@
+# Build artifacts
+build/
+*.deb
+*.egg-info/
+dist/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# History Reconstruction Exclusions
+docs/plans/
+GEMINI.md
+
+# Configuration
+~/.config/summit/
+config.json
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+.Thumbs.db
+
+# Python
+.env
+venv/
+env/
+.claude/
