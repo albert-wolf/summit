@@ -8,10 +8,6 @@ __pycache__/
 *.pyo
 *.pyd
 
-# History Reconstruction Exclusions
-docs/plans/
-GEMINI.md
-
 # Configuration
 ~/.config/summit/
 config.json
@@ -32,3 +28,5 @@ config.json
 venv/
 env/
 .claude/
+docs/plans/
+GEMINI.md
