@@ -1,0 +1,335 @@
+import subprocess
+import shutil
+from pathlib import Path
+from typing import Tuple, List, Dict, Optional
+
+
+class NordManager:
+    """NordVPN CLI wrapper with output parsing. No GTK dependencies."""
+
+    def __init__(self):
+        self.nord_path = shutil.which("nordvpn")
+        if not self.nord_path:
+            self.nord_path = "nordvpn"  # Assume it's in PATH
+
+        # Cache for expensive operations
+        self._countries_cache: Optional[List[str]] = None
+        self._settings_cache: Optional[Dict] = None
+
+    def run_command(self, args: List[str]) -> Tuple[str, str, int]:
+        """Run nordvpn command, return (stdout, stderr, returncode)."""
+        try:
+            result = subprocess.run(
+                [self.nord_path] + args,
+                capture_output=True,
+                text=True,
+                timeout=10
+            )
+            return result.stdout, result.stderr, result.returncode
+        except subprocess.TimeoutExpired:
+            return "", "Command timed out", 1
+        except Exception as e:
+            return "", str(e), 1
+
+    def _command_result(self, stdout: str, stderr: str, returncode: int) -> Tuple[bool, str]:
+        """Extract success status and message from command output."""
+        success = returncode == 0
+        message = (stdout.strip() if success else stderr.strip()) or "No response"
+        return success, message
+
+    def _parse_kv_output(self, text: str) -> Dict[str, str]:
+        """Parse key: value format output with multi-line port block support."""
+        result = {}
+        current_key = None
+        for line in text.splitlines():
+            # Check for key: value format (with or without space after colon)
+            if ':' in line and not line.startswith(' '):
+                if ': ' in line:
+                    key, _, value = line.partition(': ')
+                    result[key.strip()] = value.strip()
+                else:
+                    # Handle lines like "Allowlisted ports:" with no value
+                    key = line.rstrip(':').strip()
+                    result[key] = ""
+                current_key = key.strip()
+            elif line.startswith(' ') and current_key == 'Allowlisted ports':
+                port = line.strip()
+                if port:
+                    result.setdefault('allowlisted_ports', []).append(port)
+        return result
+
+    def is_installed(self) -> bool:
+        """Check if nordvpn is installed."""
+        return shutil.which("nordvpn") is not None
+
+    def is_logged_in(self) -> bool:
+        """Check if user is logged in to NordVPN."""
+        stdout, _, returncode = self.run_command(["account"])
+        return returncode == 0 and "Please log in" not in stdout
+
+    def get_status(self) -> Dict[str, str]:
+        """Parse `nordvpn status` output."""
+        stdout, _, returncode = self.run_command(["status"])
+        if returncode == 0:
+            return self._parse_kv_output(stdout)
+        return {}
+
+    def get_settings(self, cached: bool = False) -> Dict:
+        """Parse `nordvpn settings` output including allowlisted ports.
+
+        Args:
+            cached: If True, use cached result if available (default False for fresh data)
+        """
+        if cached and self._settings_cache is not None:
+            return self._settings_cache
+
+        stdout, _, returncode = self.run_command(["settings"])
+        if returncode == 0:
+            self._settings_cache = self._parse_kv_output(stdout)
+            return self._settings_cache
+        return {}
+
+    def get_countries(self, cached: bool = True) -> List[str]:
+        """Parse `nordvpn countries` output.
+
+        Args:
+            cached: If True, use cached result if available (default True, rarely changes)
+        """
+        if cached and self._countries_cache is not None:
+            return self._countries_cache
+
+        stdout, _, returncode = self.run_command(["countries"])
+        if returncode == 0:
+            self._countries_cache = [line.strip() for line in stdout.splitlines() if line.strip()]
+            return self._countries_cache
+        return []
+
+    def clear_cache(self) -> None:
+        """Clear all cached data. Call after operations that change state."""
+        self._countries_cache = None
+        self._settings_cache = None
+
+    def get_cities(self, country: str) -> List[str]:
+        """Parse `nordvpn cities <country>` output."""
+        stdout, _, returncode = self.run_command(["cities", country])
+        if returncode == 0:
+            return [line.strip() for line in stdout.splitlines() if line.strip()]
+        return []
+
+    def connect(self, country: str, city: Optional[str] = None) -> Tuple[bool, str]:
+        """Connect to a server. Returns (success, message).
+
+        Args:
+            country: Country name (e.g., "United_States")
+            city: Optional city name (e.g., "New_York")
+        """
+        if not country or not isinstance(country, str):
+            return False, "Invalid country specified"
+
+        args = ["connect", country]
+        if city:
+            if not isinstance(city, str):
+                return False, "Invalid city specified"
+            args.append(city)
+
+        stdout, stderr, returncode = self.run_command(args)
+        self.clear_cache()  # State changed, invalidate cache
+        return self._command_result(stdout, stderr, returncode)
+
+    def disconnect(self) -> Tuple[bool, str]:
+        """Disconnect from VPN. Returns (success, message)."""
+        stdout, stderr, returncode = self.run_command(["disconnect"])
+        self.clear_cache()
+        return self._command_result(stdout, stderr, returncode)
+
+    def reconnect(self) -> Tuple[bool, str]:
+        """Reconnect to the last server. Returns (success, message)."""
+        stdout, stderr, returncode = self.run_command(["connect"])
+        self.clear_cache()
+        return self._command_result(stdout, stderr, returncode)
+
+    def set_setting(self, key: str, value: str) -> Tuple[bool, str]:
+        """Set a NordVPN setting. Returns (success, message).
+
+        Args:
+            key: Setting name (display name like "Kill Switch")
+            value: Value to set (e.g., "enabled", "disabled", "TCP")
+        """
+        # Map display names to actual command names
+        command_map = {
+            "Kill Switch": "killswitch",
+            "Firewall": "firewall",
+            "Auto-connect": "autoconnect",
+            "Notify": "notify",
+            "Tray": "tray",
+            "Threat Protection Lite": "threatprotectionlite",
+            "LAN Discovery": "lan-discovery",
+            "Virtual Location": "virtual-location",
+            "Post-quantum VPN": "post-quantum",
+            "Technology": "technology",
+            "Protocol": "protocol",
+        }
+
+        if not key or not value:
+            return False, "Key and value are required"
+
+        command_key = command_map.get(key, key.lower())
+        stdout, stderr, returncode = self.run_command(["set", command_key, value])
+        self.clear_cache()
+        return self._command_result(stdout, stderr, returncode)
+
+    def add_port(self, port: int, protocol: Optional[str] = None) -> Tuple[bool, str]:
+        """Add a port to allowlist.
+
+        Args:
+            port: Port number (1-65535)
+            protocol: 'TCP', 'UDP', or None for both
+        """
+        # Validate port number
+        if not isinstance(port, int) or port < 1 or port > 65535:
+            return False, "Invalid port number (must be 1-65535)"
+
+        args = ["allowlist", "add", "port", str(port)]
+        if protocol and protocol.upper() != "BOTH":
+            args.extend(["protocol", protocol.upper()])
+
+        stdout, stderr, returncode = self.run_command(args)
+        self.clear_cache()
+        return self._command_result(stdout, stderr, returncode)
+
+    def remove_port(self, port: int, protocol: Optional[str] = None) -> Tuple[bool, str]:
+        """Remove a port from allowlist.
+
+        Args:
+            port: Port number (1-65535)
+            protocol: 'TCP', 'UDP', or None for all
+        """
+        # Validate port number
+        if not isinstance(port, int) or port < 1 or port > 65535:
+            return False, "Invalid port number (must be 1-65535)"
+
+        args = ["allowlist", "remove", "port", str(port)]
+        if protocol and protocol.upper() != "BOTH":
+            args.extend(["protocol", protocol.upper()])
+
+        stdout, stderr, returncode = self.run_command(args)
+        self.clear_cache()
+        return self._command_result(stdout, stderr, returncode)
+
+    def set_meshnet(self, enabled: bool) -> Tuple[bool, str]:
+        """Enable or disable Meshnet.
+
+        Args:
+            enabled: True to enable, False to disable
+        """
+        value = "on" if enabled else "off"
+        stdout, stderr, returncode = self.run_command(["set", "meshnet", value])
+        self.clear_cache()
+        return self._command_result(stdout, stderr, returncode)
+
+    def get_meshnet_peers(self) -> Tuple[bool, List[Dict]]:
+        """Get meshnet peers. Returns (meshnet_enabled, peers_list).
+
+        Peers are returned as dicts with keys: "name", "status", "ip", "nickname"
+        Status values: "connected", "online", "disconnected", "offline"
+        """
+        # Check if meshnet is enabled in settings
+        settings = self.get_settings(cached=True)
+        meshnet_enabled = settings.get("Meshnet", "disabled").lower() == "enabled"
+
+        if not meshnet_enabled:
+            return False, []
+
+        # Get peer list from CLI
+        stdout, stderr, returncode = self.run_command(["meshnet", "peer", "list"])
+
+        if returncode != 0:
+            return meshnet_enabled, []
+
+        # Parse key: value format peer list
+        peers = []
+        current_peer: Optional[Dict] = None
+        in_peers_section = False
+
+        for line in stdout.splitlines():
+            line = line.strip()
+
+            # Skip empty lines
+            if not line:
+                continue
+
+            # Detect Local Peers section
+            if "local peers" in line.lower():
+                in_peers_section = True
+                continue
+
+            # Skip "This device:" header
+            if "this device" in line.lower():
+                continue
+
+            # Only process peers section
+            if not in_peers_section or ":" not in line:
+                continue
+
+            # Parse key: value pair
+            key, value = line.split(":", 1)
+            key = key.strip().lower()
+            value = value.strip()
+
+            # Skip empty values
+            if not value:
+                continue
+
+            # Start new peer on "hostname" key
+            if key == "hostname":
+                if current_peer and "name" in current_peer:
+                    peers.append(current_peer)
+                current_peer = {"name": value}
+            elif current_peer is not None:
+                # Add peer attributes
+                if key == "status":
+                    current_peer["status"] = value.lower()
+                elif key == "ip":
+                    current_peer["ip"] = value
+                elif key == "nickname":
+                    current_peer["nickname"] = value
+
+        # Don't forget last peer
+        if current_peer and "name" in current_peer:
+            peers.append(current_peer)
+
+        return True, peers
+
+    def get_this_device_info(self) -> Optional[str]:
+        """Get info about this device from meshnet peer list.
+
+        Returns formatted device info (key: value pairs) between "This device:"
+        and "Local Peers:" sections. Returns None if unavailable.
+        """
+        stdout, stderr, returncode = self.run_command(["meshnet", "peer", "list"])
+
+        if returncode != 0:
+            return None
+
+        device_info_lines = []
+        in_device_section = False
+
+        for line in stdout.splitlines():
+            line_lower = line.lower()
+
+            # Detect "This device:" section start
+            if "this device" in line_lower:
+                in_device_section = True
+                continue
+
+            # Detect section end (Local Peers header)
+            if in_device_section and ("local peers" in line_lower or "peers:" in line_lower):
+                break
+
+            # Collect device info lines
+            if in_device_section:
+                line = line.strip()
+                if line:  # Skip empty lines
+                    device_info_lines.append(line)
+
+        return "\n".join(device_info_lines) if device_info_lines else None
