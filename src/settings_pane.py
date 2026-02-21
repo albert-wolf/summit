@@ -36,9 +36,19 @@ class SettingsPane(Gtk.Box):
         settings_box.set_margin_start(4)
         settings_box.set_margin_end(4)
 
-        # Auto-Connect section (at the top, inline with toggle, country, city)
+        # Connection header
+        connection_header = Gtk.Label(label="Connection")
+        connection_header.add_css_class("heading")
+        connection_header.set_xalign(0)
+        connection_header.set_margin_top(0)
+        connection_header.set_margin_bottom(8)
+        settings_box.append(connection_header)
+
+        # Auto-Connect section (inline with toggle, country, city)
         autoconnect_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
         autoconnect_row.set_hexpand(True)
+        autoconnect_row.set_margin_start(12)
+        autoconnect_row.set_margin_bottom(4)
 
         self.autoconnect_switch = Gtk.Switch()
         self.autoconnect_switch.set_valign(Gtk.Align.CENTER)
@@ -70,6 +80,8 @@ class SettingsPane(Gtk.Box):
         # Technology (NORDLYNX, OPENVPN)
         tech_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
         tech_row.set_hexpand(True)
+        tech_row.set_margin_start(12)
+        tech_row.set_margin_bottom(4)
 
         tech_label = Gtk.Label(label="Technology", xalign=0)
         tech_label.set_hexpand(True)
@@ -85,6 +97,8 @@ class SettingsPane(Gtk.Box):
         # Protocol (TCP, UDP)
         proto_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
         proto_row.set_hexpand(True)
+        proto_row.set_margin_start(12)
+        proto_row.set_margin_bottom(4)
 
         proto_label = Gtk.Label(label="Protocol", xalign=0)
         proto_label.set_hexpand(True)
@@ -99,7 +113,7 @@ class SettingsPane(Gtk.Box):
 
         # Group settings by category
         settings_groups = {
-            "Connection": [
+            "Security": [
                 ("Kill Switch", "Kill Switch"),
                 ("Firewall", "Firewall"),
             ],
