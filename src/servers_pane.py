@@ -20,6 +20,7 @@ class ServersPane(Gtk.Box):
         self.search_text = ""
         self.all_countries = []
         self.all_cities = []
+        self.app_ref = None
 
         # Search bar
         search_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
@@ -94,6 +95,17 @@ class ServersPane(Gtk.Box):
         cities_scrolled.set_hexpand(True)
         cities_box.append(cities_scrolled)
 
+        # Favorite button
+        fav_button_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        fav_button_box.set_margin_top(8)
+
+        self.favorite_button = Gtk.Button(label="★ Add to Favorites")
+        self.favorite_button.set_sensitive(False)
+        self.favorite_button.connect("clicked", self.on_add_favorite_clicked)
+        fav_button_box.append(self.favorite_button)
+
+        cities_box.append(fav_button_box)
+
         self.paned.set_end_child(cities_box)
         self.paned.set_vexpand(True)
         self.paned.set_hexpand(True)
@@ -113,6 +125,38 @@ class ServersPane(Gtk.Box):
 
         # Load countries in background
         self.load_countries()
+
+    def set_app_ref(self, app):
+        """Set reference to app for showing toasts."""
+        self.app_ref = app
+
+    def on_add_favorite_clicked(self, button):
+        """Add current country/city selection to favorites."""
+        if not self.selected_country or not self.selected_city:
+            if self.app_ref:
+                self.app_ref.show_toast("Please select both country and city", is_error=True)
+            return
+
+        # Check if already favorite
+        favorites = self.app_ref.config.get("favorites", [])
+        new_fav = {"country": self.selected_country, "city": self.selected_city}
+
+        if new_fav in favorites:
+            if self.app_ref:
+                self.app_ref.show_toast("Already in favorites", is_error=True)
+            return
+
+        # Add to config
+        favorites.append(new_fav)
+        self.app_ref.config["favorites"] = favorites
+        self.app_ref.save_config()
+
+        if self.app_ref:
+            self.app_ref.show_toast(f"Added to favorites: {self.selected_city}")
+
+        # Notify sidebar to refresh
+        if hasattr(self.app_ref, 'recent_pane'):
+            self.app_ref.recent_pane.refresh_favorites_display()
 
     def load_countries(self):
         """Load countries list in background thread."""
@@ -196,8 +240,10 @@ class ServersPane(Gtk.Box):
         if row:
             city_label = row.get_child()
             self.selected_city = city_label.get_label()
+            self.favorite_button.set_sensitive(True)
         else:
             self.selected_city = None
+            self.favorite_button.set_sensitive(False)
 
     def on_city_row_activated(self, listbox, row):
         """Handle double-click on city to connect directly."""
