@@ -87,7 +87,6 @@ class ServersPane(Gtk.Box):
         self.cities_listbox.set_hexpand(True)
         self.cities_listbox.set_vexpand(True)
         self.cities_listbox.connect("row-selected", self.on_city_selected)
-        self.cities_listbox.connect("row-activated", self.on_city_row_activated)
 
         cities_scrolled = Gtk.ScrolledWindow()
         cities_scrolled.set_child(self.cities_listbox)
@@ -244,13 +243,6 @@ class ServersPane(Gtk.Box):
         else:
             self.selected_city = None
             self.favorite_button.set_sensitive(False)
-
-    def on_city_row_activated(self, listbox, row):
-        """Handle double-click on city to connect directly."""
-        if row and self.selected_country:
-            city_label = row.get_child()
-            city = city_label.get_label()
-            self._do_connect(self.selected_country, city)
 
     def _do_connect(self, country, city=None):
         """Shared connection logic for button and double-click handlers.
