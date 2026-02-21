@@ -84,19 +84,22 @@ class RecentPane(Gtk.Box):
             row = Gtk.ListBoxRow()
             row.set_activatable(True)
 
-            box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
-            box.set_margin_top(8)
-            box.set_margin_bottom(8)
-            box.set_margin_start(8)
-            box.set_margin_end(8)
+            vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+            vbox.set_margin_top(8)
+            vbox.set_margin_bottom(8)
+            vbox.set_margin_start(8)
+            vbox.set_margin_end(8)
 
             country = fav.get("country", "Unknown")
             city = fav.get("city", "Unknown")
             display_text = f"{city} - {country}"
 
+            hbox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+
             label = Gtk.Label(label=display_text)
             label.set_wrap(True)
             label.set_xalign(0)
+            label.set_hexpand(True)
 
             # Highlight if current connection (compare by city and country underscore format)
             current_city = self.current_connection.get("city", "") if self.current_connection else ""
@@ -104,10 +107,29 @@ class RecentPane(Gtk.Box):
             if country == current_country and city == current_city:
                 label.set_markup(f"<b>{display_text}</b>")
 
-            box.append(label)
-            row.set_child(box)
+            remove_btn = Gtk.Button(label="×")
+            remove_btn.set_size_request(30, -1)
+            remove_btn.connect("clicked", lambda btn: self.on_remove_favorite(fav))
+
+            hbox.append(label)
+            hbox.append(remove_btn)
+            vbox.append(hbox)
+            row.set_child(vbox)
             row.favorite_data = fav
             self.favorites_listbox.append(row)
+
+    def on_remove_favorite(self, fav):
+        """Remove favorite from config."""
+        if not self.app_ref:
+            return
+
+        favorites = self.app_ref.config.get("favorites", [])
+        if fav in favorites:
+            favorites.remove(fav)
+            self.app_ref.config["favorites"] = favorites
+            self.app_ref.save_config()
+            self.refresh_favorites_display()
+            self.app_ref.show_toast("Removed from favorites")
 
     def on_favorite_clicked(self, listbox, row):
         """Handle clicking a favorite."""
