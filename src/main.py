@@ -80,6 +80,14 @@ class SummitApp(Gtk.Application):
                     return
 
                 self.build_window()
+                # Show window immediately without waiting for data to load
+                self.window.present()
+                GLib.idle_add(self.restore_window_state)
+                GLib.idle_add(self.update_right_pane_visibility)
+                GLib.idle_add(self.reapply_css)
+
+                # Load initial data in background after window is shown
+                GLib.idle_add(self.load_initial_pane_data)
             except Exception as e:
                 print(f"[ERROR] Failed to build window: {e}")
                 import traceback
@@ -438,10 +446,7 @@ class SummitApp(Gtk.Application):
             dialog.set_detail_text("Please log in to NordVPN first:\nRun 'nordvpn login' in a terminal")
             dialog.present(self.window)
 
-        # Load initial data for panes (before showing window)
-        self.load_initial_pane_data()
-
-        # Start polling
+        # Start polling (initial pane data loads in background after window shows)
         self.start_polling()
 
     def load_initial_pane_data(self):
