@@ -97,33 +97,53 @@ class SettingsPane(Gtk.Box):
 
         settings_box.append(proto_row)
 
-        # Boolean settings (toggles)
-        boolean_settings = [
-            ("Kill Switch", "Kill Switch"),
-            ("Firewall", "Firewall"),
-            ("Notify", "Notify"),
-            ("Tray", "Tray"),
-            ("Threat Protection Lite", "Threat Protection Lite"),
-            ("LAN Discovery", "LAN Discovery"),
-            ("Virtual Location", "Virtual Location"),
-            ("Post-quantum VPN", "Post-quantum VPN"),
-        ]
+        # Group settings by category
+        settings_groups = {
+            "Connection": [
+                ("Kill Switch", "Kill Switch"),
+                ("Firewall", "Firewall"),
+            ],
+            "Privacy": [
+                ("Threat Protection Lite", "Threat Protection Lite"),
+                ("Post-quantum VPN", "Post-quantum VPN"),
+                ("LAN Discovery", "LAN Discovery"),
+            ],
+            "Features": [
+                ("Notify", "Notify"),
+                ("Tray", "Tray"),
+            ],
+            "Advanced": [
+                ("Virtual Location", "Virtual Location"),
+            ],
+        }
 
-        for display_name, setting_key in boolean_settings:
-            row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
-            row.set_hexpand(True)
+        for group_name, group_settings in settings_groups.items():
+            # Group header
+            header = Gtk.Label(label=group_name)
+            header.add_css_class("heading")
+            header.set_xalign(0)
+            header.set_margin_top(12)
+            header.set_margin_bottom(8)
+            settings_box.append(header)
 
-            label = Gtk.Label(label=display_name, xalign=0)
-            label.set_hexpand(True)
-            row.append(label)
+            # Settings in group
+            for display_name, setting_key in group_settings:
+                row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+                row.set_hexpand(True)
+                row.set_margin_start(12)
+                row.set_margin_bottom(4)
 
-            switch = Gtk.Switch()
-            switch.set_valign(Gtk.Align.CENTER)
-            handler_id = switch.connect("notify::active", self.on_setting_toggled, setting_key, switch)
-            self.switches[setting_key] = (switch, display_name, handler_id)
-            row.append(switch)
+                label = Gtk.Label(label=display_name, xalign=0)
+                label.set_hexpand(True)
+                row.append(label)
 
-            settings_box.append(row)
+                switch = Gtk.Switch()
+                switch.set_valign(Gtk.Align.CENTER)
+                handler_id = switch.connect("notify::active", self.on_setting_toggled, setting_key, switch)
+                self.switches[setting_key] = (switch, display_name, handler_id)
+                row.append(switch)
+
+                settings_box.append(row)
 
         settings_container.append(settings_box)
         scrolled.set_child(settings_container)
