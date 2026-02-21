@@ -28,6 +28,7 @@ from settings_pane import SettingsPane
 from ports_pane import PortsPane
 from meshnet_pane import MeshnetPane
 from recent_pane import RecentPane
+from toast import ToastOverlay
 
 
 class SummitApp(Gtk.Application):
@@ -187,6 +188,7 @@ class SummitApp(Gtk.Application):
             "autoconnect_enabled": False,
             "autoconnect_country": "",
             "autoconnect_city": "",
+            "favorites": [],
         }
 
         if self.config_file.exists():
@@ -223,6 +225,11 @@ class SummitApp(Gtk.Application):
                 json.dump(self.config, f, indent=2)
         except Exception as e:
             print(f"[ERROR] Failed to save config: {e}")
+
+    def show_toast(self, message: str, is_error: bool = False):
+        """Show a toast notification from any pane."""
+        if hasattr(self, 'toast_overlay'):
+            self.toast_overlay.show_toast(message, is_error)
 
     def get_is_dark_mode(self) -> bool:
         """Detect if dark theme is active. Tries Adwaita first, then theme name."""
@@ -415,7 +422,10 @@ class SummitApp(Gtk.Application):
         self.content_paned.set_hexpand(True)
         main_box.append(self.content_paned)
 
-        self.window.set_child(main_box)
+        # Wrap main content with toast overlay
+        self.toast_overlay = ToastOverlay()
+        self.toast_overlay.set_child(main_box)
+        self.window.set_child(self.toast_overlay)
 
         # Check login status
         if not self.nord.is_logged_in():

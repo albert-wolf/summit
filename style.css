@@ -211,3 +211,9 @@ headerbar.dark-mode {
 .tab-button-group .tab-button.last-tab {
     margin: 0px 0px 0px 0px;
 }
+
+/* Toast notifications */
+.error-text {
+    color: #ff4444;
+    font-weight: bold;
+}
