@@ -122,8 +122,9 @@ class ServersPane(Gtk.Box):
 
         self.append(button_box)
 
-        # Load countries in background
+        # Load countries and all cities in background
         self.load_countries()
+        self.load_all_cities()
 
     def set_app_ref(self, app):
         """Set reference to app for showing toasts."""
@@ -162,6 +163,20 @@ class ServersPane(Gtk.Box):
         def worker():
             countries = self.nord.get_countries()
             GLib.idle_add(self.on_countries_loaded, countries)
+
+        import threading
+        thread = threading.Thread(target=worker, daemon=True)
+        thread.start()
+
+    def load_all_cities(self):
+        """Load all cities from all countries in background for searching."""
+        def worker():
+            # Load cities from all countries
+            all_cities = set()
+            for country in self.nord.get_countries():
+                cities = self.nord.get_cities(country)
+                all_cities.update(cities)
+            self.all_cities = sorted(list(all_cities))
 
         import threading
         thread = threading.Thread(target=worker, daemon=True)
@@ -216,6 +231,10 @@ class ServersPane(Gtk.Box):
     def on_country_selected(self, listbox, row):
         """Load cities when country is selected."""
         if row:
+            # Clear search when country is explicitly selected
+            self.search_text = ""
+            self.search_entry.set_text("")
+
             country_label = row.get_child()
             self.selected_country = country_label.get_label()
             self.selected_city = None
