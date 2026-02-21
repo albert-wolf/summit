@@ -86,8 +86,12 @@ class SummitApp(Gtk.Application):
                 GLib.idle_add(self.update_right_pane_visibility)
                 GLib.idle_add(self.reapply_css)
 
-                # Load initial data in background after window is shown
-                GLib.idle_add(self.load_initial_pane_data)
+                # Load initial data in background thread after window is shown
+                def load_data():
+                    import threading
+                    thread = threading.Thread(target=self.load_initial_pane_data, daemon=True)
+                    thread.start()
+                GLib.idle_add(load_data)
             except Exception as e:
                 print(f"[ERROR] Failed to build window: {e}")
                 import traceback
@@ -450,10 +454,10 @@ class SummitApp(Gtk.Application):
         self.start_polling()
 
     def load_initial_pane_data(self):
-        """Load initial data for all panes before showing the window."""
-        # Load settings synchronously for settings pane
+        """Load initial data for all panes in background after window shows."""
+        # Load settings asynchronously
         if hasattr(self, 'settings_pane'):
-            self.settings_pane.load_settings(synchronous=True)
+            self.settings_pane.load_settings(synchronous=False)
         # Load status for status pane
         if hasattr(self, 'status_pane'):
             self.status_pane.update_status()
