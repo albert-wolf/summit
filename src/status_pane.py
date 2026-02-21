@@ -91,9 +91,8 @@ class StatusPane(Gtk.Box):
 
         self.append(button_box)
 
-    def update_status(self):
-        """Update status display from summit_manager."""
-        status = self.nord.get_status()
+    def apply_status(self, status):
+        """Apply pre-fetched status to UI (called from polling thread via idle_add)."""
         if not status:
             self.status_label.set_label("Disconnected")
             self.status_dot.set_label("●")
@@ -132,6 +131,12 @@ class StatusPane(Gtk.Box):
         self.current_status = status
         if self.on_status_change:
             self.on_status_change(status)
+        return False
+
+    def update_status(self):
+        """Update status display from summit_manager (synchronous version for manual updates)."""
+        status = self.nord.get_status()
+        self.apply_status(status)
 
     def on_connect_clicked(self, button):
         """Connect button clicked - switch to servers tab."""

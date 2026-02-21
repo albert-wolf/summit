@@ -154,9 +154,8 @@ class RecentPane(Gtk.Box):
         import threading
         threading.Thread(target=worker, daemon=True).start()
 
-    def update_status(self):
-        """Check if connection status changed and track current server."""
-        status = self.nord.get_status()
+    def apply_status(self, status):
+        """Apply pre-fetched status to UI (called from polling thread via idle_add)."""
         if not status:
             self.current_connection = None
             return
@@ -191,6 +190,12 @@ class RecentPane(Gtk.Box):
         # Refresh highlights
         self.refresh_favorites_display()
         self.refresh_history_display()
+        return False
+
+    def update_status(self):
+        """Update status display from summit_manager (synchronous version for manual updates)."""
+        status = self.nord.get_status()
+        self.apply_status(status)
 
     def add_history_entry(self, display_text, country, city, server):
         """Add an entry to connection history."""
