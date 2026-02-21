@@ -186,11 +186,21 @@ class ServersPane(Gtk.Box):
 
     def refresh_cities_display(self):
         """Refresh city list based on search."""
-        if not self.selected_country:
-            return
         self.cities_listbox.remove_all()
-        for city in self.all_cities:
-            if self.search_text in city.lower():
+
+        # When searching, show all matching cities; when not searching, show cities from selected country
+        if self.search_text:
+            # Search mode: show matching cities from all countries
+            for city in self.all_cities:
+                if self.search_text in city.lower():
+                    row = Gtk.ListBoxRow()
+                    label = Gtk.Label(label=city, xalign=0)
+                    label.set_hexpand(True)
+                    row.set_child(label)
+                    self.cities_listbox.append(row)
+        elif self.selected_country:
+            # Normal mode: show cities from selected country
+            for city in self.all_cities:
                 row = Gtk.ListBoxRow()
                 label = Gtk.Label(label=city, xalign=0)
                 label.set_hexpand(True)
