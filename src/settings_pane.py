@@ -97,33 +97,53 @@ class SettingsPane(Gtk.Box):
 
         settings_box.append(proto_row)
 
-        # Boolean settings (toggles)
-        boolean_settings = [
-            ("Kill Switch", "Kill Switch"),
-            ("Firewall", "Firewall"),
-            ("Notify", "Notify"),
-            ("Tray", "Tray"),
-            ("Threat Protection Lite", "Threat Protection Lite"),
-            ("LAN Discovery", "LAN Discovery"),
-            ("Virtual Location", "Virtual Location"),
-            ("Post-quantum VPN", "Post-quantum VPN"),
-        ]
+        # Group settings by category
+        settings_groups = {
+            "Connection": [
+                ("Kill Switch", "Kill Switch"),
+                ("Firewall", "Firewall"),
+            ],
+            "Privacy": [
+                ("Threat Protection Lite", "Threat Protection Lite"),
+                ("Post-quantum VPN", "Post-quantum VPN"),
+                ("LAN Discovery", "LAN Discovery"),
+            ],
+            "Features": [
+                ("Notify", "Notify"),
+                ("Tray", "Tray"),
+            ],
+            "Advanced": [
+                ("Virtual Location", "Virtual Location"),
+            ],
+        }
 
-        for display_name, setting_key in boolean_settings:
-            row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
-            row.set_hexpand(True)
+        for group_name, group_settings in settings_groups.items():
+            # Group header
+            header = Gtk.Label(label=group_name)
+            header.add_css_class("heading")
+            header.set_xalign(0)
+            header.set_margin_top(12)
+            header.set_margin_bottom(8)
+            settings_box.append(header)
 
-            label = Gtk.Label(label=display_name, xalign=0)
-            label.set_hexpand(True)
-            row.append(label)
+            # Settings in group
+            for display_name, setting_key in group_settings:
+                row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+                row.set_hexpand(True)
+                row.set_margin_start(12)
+                row.set_margin_bottom(4)
 
-            switch = Gtk.Switch()
-            switch.set_valign(Gtk.Align.CENTER)
-            handler_id = switch.connect("notify::active", self.on_setting_toggled, setting_key, switch)
-            self.switches[setting_key] = (switch, display_name, handler_id)
-            row.append(switch)
+                label = Gtk.Label(label=display_name, xalign=0)
+                label.set_hexpand(True)
+                row.append(label)
 
-            settings_box.append(row)
+                switch = Gtk.Switch()
+                switch.set_valign(Gtk.Align.CENTER)
+                handler_id = switch.connect("notify::active", self.on_setting_toggled, setting_key, switch)
+                self.switches[setting_key] = (switch, display_name, handler_id)
+                row.append(switch)
+
+                settings_box.append(row)
 
         settings_container.append(settings_box)
         scrolled.set_child(settings_container)
@@ -274,6 +294,22 @@ class SettingsPane(Gtk.Box):
                 self.proto_dropdown.set_sensitive(False)
         return False
 
+    def _apply_autoconnect(self):
+        """Send the autoconnect CLI command with the current country/city selection."""
+        country = self.autoconnect_country_combo.get_active_text() or ""
+        city = self.autoconnect_city_combo.get_active_text() or ""
+
+        def worker():
+            cmd = ["settings", "autoconnect", "on"]
+            if country and country != "Select Country":
+                cmd.append(country)
+            if city and city != "Select City":
+                cmd.append(city)
+            self.nord.run_command(cmd)
+
+        import threading
+        threading.Thread(target=worker, daemon=True).start()
+
     def on_autoconnect_toggled(self, switch, param):
         """Handle auto-connect toggle."""
         enabled = switch.get_active()
@@ -283,15 +319,13 @@ class SettingsPane(Gtk.Box):
         self.autoconnect_city_combo.set_sensitive(enabled)
 
         # Send CLI command in background
-        def worker():
-            if enabled:
-                self.nord.run_command(["settings", "autoconnect", "on"])
-            else:
+        if enabled:
+            self._apply_autoconnect()
+        else:
+            def worker():
                 self.nord.run_command(["settings", "autoconnect", "off"])
-
-        import threading
-        thread = threading.Thread(target=worker, daemon=True)
-        thread.start()
+            import threading
+            threading.Thread(target=worker, daemon=True).start()
 
     def on_autoconnect_country_changed(self, combo):
         """Handle country selection change."""
@@ -309,8 +343,7 @@ class SettingsPane(Gtk.Box):
             GLib.idle_add(self.populate_autoconnect_cities, cities)
 
         import threading
-        thread = threading.Thread(target=worker, daemon=True)
-        thread.start()
+        threading.Thread(target=worker, daemon=True).start()
 
     def populate_autoconnect_cities(self, cities):
         """Populate city dropdown."""
@@ -322,8 +355,11 @@ class SettingsPane(Gtk.Box):
 
     def on_autoconnect_city_changed(self, combo):
         """Handle city selection change."""
-        # City selection is automatically saved when window closes via get_autoconnect_config()
-        pass
+        if not self.autoconnect_switch.get_active():
+            return
+        city = combo.get_active_text()
+        if city and city != "Select City":
+            self._apply_autoconnect()
 
     def get_autoconnect_config(self):
         """Return current auto-connect config."""

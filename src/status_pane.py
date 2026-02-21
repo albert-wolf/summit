@@ -18,6 +18,7 @@ class StatusPane(Gtk.Box):
         self.on_status_change = on_status_change
         self.on_connect_click = on_connect_click
         self.current_status = None
+        self.app_ref = None
 
         # Status indicator
         status_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
@@ -127,6 +128,10 @@ class StatusPane(Gtk.Box):
         if self.on_connect_click:
             self.on_connect_click()
 
+    def set_app_ref(self, app):
+        """Set reference to app for showing toasts."""
+        self.app_ref = app
+
     def on_disconnect_clicked(self, button):
         """Disconnect from VPN."""
         button.set_sensitive(False)
@@ -144,6 +149,8 @@ class StatusPane(Gtk.Box):
         """Handle disconnect completion."""
         button.set_sensitive(True)
         button.set_label("Disconnect")
+        if not success and self.app_ref:
+            self.app_ref.show_toast(f"Failed to disconnect: {message}", is_error=True)
         self.update_status()
         return False
 
@@ -164,5 +171,7 @@ class StatusPane(Gtk.Box):
         """Handle reconnect completion."""
         button.set_sensitive(True)
         button.set_label("Reconnect")
+        if not success and self.app_ref:
+            self.app_ref.show_toast(f"Failed to reconnect: {message}", is_error=True)
         self.update_status()
         return False

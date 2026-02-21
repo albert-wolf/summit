@@ -28,5 +28,3 @@ config.json
 venv/
 env/
 .claude/
-docs/plans/
-GEMINI.md
