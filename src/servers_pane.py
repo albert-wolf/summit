@@ -28,7 +28,9 @@ class ServersPane(Gtk.Box):
 
         self.paned = Gtk.Paned(orientation=Gtk.Orientation.HORIZONTAL)
         self.paned.set_wide_handle(True)
-        self.paned.set_position(280)
+        self.paned.set_position(450)
+        self.paned.set_resize_start_child(True)
+        self.paned.set_resize_end_child(True)
 
         # Left: Countries list
         countries_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
