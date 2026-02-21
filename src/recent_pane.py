@@ -47,18 +47,21 @@ class RecentPane(Gtk.Box):
 
         state = status.get("Status", "Disconnected").lower()
 
-        # Only track when connected
-        if "connected" in state:
+        # Only track when fully connected (not just connecting)
+        if state == "connected":
             server = status.get("Server", "Unknown")
             # Only add to history if this is a NEW connection (different server than last)
             if server != self.last_server:
                 city = status.get("City", "Unknown")
                 country = status.get("Country", "Unknown")
                 display_text = f"{city} - {server}"
-                self.add_history_entry(display_text, country, city, server)
+                # CLI connect needs underscore format (e.g. United_States, Saint_Louis)
+                connect_country = country.replace(" ", "_")
+                connect_city = city.replace(" ", "_")
+                self.add_history_entry(display_text, connect_country, connect_city, server)
                 self.last_server = server
         else:
-            # Disconnected - clear last server so next connection gets added
+            # Disconnected or transitioning - clear last server so next connection gets added
             self.last_server = None
 
     def add_history_entry(self, display_text, country, city, server):
@@ -132,22 +135,29 @@ class RecentPane(Gtk.Box):
             return
 
         entry = row.entry_data
-        country = entry['country']
-        city = entry['city']
+        country = entry.get('country', '')
+        city = entry.get('city', '')
 
-        # Make button insensitive during connection
+        if not country:
+            return  # Can't connect without country
+
+        # Make row insensitive during connection attempt
         row.set_sensitive(False)
 
         def worker():
             # Connect to the saved country and city
             success, message = self.nord.connect(country, city)
-            GLib.idle_add(self.on_connect_done, success, row)
+            # Clear cache so next status update gets fresh data
+            if success:
+                self.nord.clear_cache()
+            GLib.idle_add(self.on_connect_done, success, row, message)
 
         import threading
         thread = threading.Thread(target=worker, daemon=True)
         thread.start()
 
-    def on_connect_done(self, success, row):
+    def on_connect_done(self, success, row, message):
         """Handle connection completion."""
         row.set_sensitive(True)
+        # Connection status will update via the polling loop
         return False

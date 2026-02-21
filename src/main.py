@@ -2,7 +2,10 @@
 import sys
 import os
 import json
+import warnings
 import gi
+
+warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 gi.require_version('Gtk', '4.0')
 gi.require_version('Gio', '2.0')
@@ -60,8 +63,8 @@ class SummitApp(Gtk.Application):
                 style_manager = Adw.StyleManager.get_default()
                 if style_manager:
                     style_manager.connect("notify::dark", self.on_theme_changed)
-            except Exception as e:
-                print(f"[DEBUG] Could not connect to Adwaita theme changes: {e}")
+            except Exception:
+                pass
 
         if not self.window:
             try:
@@ -229,31 +232,26 @@ class SummitApp(Gtk.Application):
                 style_manager = Adw.StyleManager.get_default()
                 if style_manager:
                     is_dark = style_manager.get_dark()
-                    print(f"[DEBUG] Adwaita theme detection: {is_dark}", flush=True)
                     return is_dark
             except Exception as e:
-                print(f"[DEBUG] Adwaita detection failed: {e}", flush=True)
+                pass
 
         # Fallback to checking GTK theme name
         settings = Gtk.Settings.get_default()
         if settings:
             # First try the prefer-dark-theme setting
             prefer_dark = settings.get_property("gtk-application-prefer-dark-theme")
-            print(f"[DEBUG] GTK prefer-dark-theme setting: {prefer_dark}", flush=True)
             if prefer_dark is not None:
                 return prefer_dark is True
 
             # Try to detect from theme name
             theme_name = settings.get_property("gtk-theme-name")
-            print(f"[DEBUG] GTK theme name: {theme_name}", flush=True)
             if theme_name:
                 # Check if theme name indicates dark mode
                 is_dark = "dark" in theme_name.lower()
-                print(f"[DEBUG] Detected dark mode from theme name: {is_dark}", flush=True)
                 return is_dark
 
         # Default to light mode if detection fails (LMDE uses light themes by default)
-        print(f"[DEBUG] Theme detection failed, defaulting to light", flush=True)
         return False
 
     def on_theme_changed(self, *args):
@@ -262,30 +260,24 @@ class SummitApp(Gtk.Application):
             return
 
         is_dark = self.get_is_dark_mode()
-        print(f"[THEME_CHANGE] Theme changed to: {'DARK' if is_dark else 'LIGHT'}")
 
         # Update window CSS classes
         if is_dark:
             self.window.remove_css_class("light-theme")
-            print(f"[THEME_CHANGE] Removed 'light-theme' from window")
         else:
             self.window.add_css_class("light-theme")
-            print(f"[THEME_CHANGE] Added 'light-theme' to window")
 
         # Update headerbar CSS classes and reapply inline CSS
         if hasattr(self, 'header_bar'):
             if is_dark:
                 self.header_bar.remove_css_class("light-mode")
                 self.header_bar.add_css_class("dark-mode")
-                print(f"[THEME_CHANGE] Applied 'dark-mode' to headerbar")
             else:
                 self.header_bar.remove_css_class("dark-mode")
                 self.header_bar.add_css_class("light-mode")
-                print(f"[THEME_CHANGE] Applied 'light-mode' to headerbar")
 
         # Force style context reset on window and recursively on all children
         self._reset_style_recursive(self.window)
-        print(f"[THEME_CHANGE] Style reset complete")
 
     def _reset_style_recursive(self, widget):
         """Recursively reset style on widget and all children to force CSS recalculation."""
@@ -312,10 +304,8 @@ class SummitApp(Gtk.Application):
 
         # Apply theme class to window
         is_dark_mode = self.get_is_dark_mode()
-        print(f"[DEBUG] Detected theme on startup: {'DARK' if is_dark_mode else 'LIGHT'}")
         if not is_dark_mode:
             self.window.add_css_class("light-theme")
-            print(f"[DEBUG] Added 'light-theme' class to window")
 
         # Stack to replace notebook (for page switching)
         self.stack = Gtk.Stack()
@@ -406,7 +396,7 @@ class SummitApp(Gtk.Application):
         # Horizontal paned: stack on left, recent connections on right
         self.content_paned = Gtk.Paned(orientation=Gtk.Orientation.HORIZONTAL)
         self.content_paned.set_wide_handle(True)
-        self.content_paned.set_position(600)
+        self.content_paned.set_position(550)
 
         # Recent Connections Pane (created but only added to paned when on Status tab)
         self.recent_pane = RecentPane(self.nord)
@@ -531,18 +521,14 @@ class SummitApp(Gtk.Application):
 
         # Detect theme and apply CSS class + programmatic styling
         is_dark_mode = self.get_is_dark_mode()
-        print(f"[DEBUG] Building headerbar - detected theme: {'DARK' if is_dark_mode else 'LIGHT'}")
 
         if is_dark_mode:
             header.add_css_class("dark-mode")
-            print(f"[DEBUG] Added 'dark-mode' class to headerbar")
         else:
             header.add_css_class("light-mode")
-            print(f"[DEBUG] Added 'light-mode' class to headerbar")
 
         # Debug: print all CSS classes on headerbar
         classes = header.get_css_classes()
-        print(f"[DEBUG] Headerbar CSS classes after build: {list(classes)}", flush=True)
 
         # Try to force style update
         header.queue_draw()
@@ -680,6 +666,7 @@ class SummitApp(Gtk.Application):
 
 
 def main():
+    GLib.set_prgname("summit")
     app = SummitApp()
     return app.run(sys.argv)
 

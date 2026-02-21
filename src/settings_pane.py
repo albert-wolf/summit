@@ -274,6 +274,22 @@ class SettingsPane(Gtk.Box):
                 self.proto_dropdown.set_sensitive(False)
         return False
 
+    def _apply_autoconnect(self):
+        """Send the autoconnect CLI command with the current country/city selection."""
+        country = self.autoconnect_country_combo.get_active_text() or ""
+        city = self.autoconnect_city_combo.get_active_text() or ""
+
+        def worker():
+            cmd = ["settings", "autoconnect", "on"]
+            if country and country != "Select Country":
+                cmd.append(country)
+            if city and city != "Select City":
+                cmd.append(city)
+            self.nord.run_command(cmd)
+
+        import threading
+        threading.Thread(target=worker, daemon=True).start()
+
     def on_autoconnect_toggled(self, switch, param):
         """Handle auto-connect toggle."""
         enabled = switch.get_active()
@@ -283,15 +299,13 @@ class SettingsPane(Gtk.Box):
         self.autoconnect_city_combo.set_sensitive(enabled)
 
         # Send CLI command in background
-        def worker():
-            if enabled:
-                self.nord.run_command(["settings", "autoconnect", "on"])
-            else:
+        if enabled:
+            self._apply_autoconnect()
+        else:
+            def worker():
                 self.nord.run_command(["settings", "autoconnect", "off"])
-
-        import threading
-        thread = threading.Thread(target=worker, daemon=True)
-        thread.start()
+            import threading
+            threading.Thread(target=worker, daemon=True).start()
 
     def on_autoconnect_country_changed(self, combo):
         """Handle country selection change."""
@@ -309,8 +323,7 @@ class SettingsPane(Gtk.Box):
             GLib.idle_add(self.populate_autoconnect_cities, cities)
 
         import threading
-        thread = threading.Thread(target=worker, daemon=True)
-        thread.start()
+        threading.Thread(target=worker, daemon=True).start()
 
     def populate_autoconnect_cities(self, cities):
         """Populate city dropdown."""
@@ -322,8 +335,11 @@ class SettingsPane(Gtk.Box):
 
     def on_autoconnect_city_changed(self, combo):
         """Handle city selection change."""
-        # City selection is automatically saved when window closes via get_autoconnect_config()
-        pass
+        if not self.autoconnect_switch.get_active():
+            return
+        city = combo.get_active_text()
+        if city and city != "Select City":
+            self._apply_autoconnect()
 
     def get_autoconnect_config(self):
         """Return current auto-connect config."""

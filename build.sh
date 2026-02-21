@@ -2,7 +2,7 @@
 set -e
 
 PACKAGE=summit
-VERSION=0.1.0
+VERSION=0.5.0
 BUILD_DIR=build/${PACKAGE}
 
 echo "=========================================="
@@ -49,6 +49,8 @@ Terminal=false
 Type=Application
 Categories=Utility;Network;
 Keywords=nordvpn;vpn;
+StartupWMClass=summit
+StartupNotify=true
 DESKTOP
 
 echo "[7/7] Building .deb package..."
