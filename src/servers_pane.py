@@ -17,6 +17,25 @@ class ServersPane(Gtk.Box):
         self.nord = nord
         self.selected_country = None
         self.selected_city = None
+        self.search_text = ""
+        self.all_countries = []
+        self.all_cities = []
+
+        # Search bar
+        search_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        search_box.set_margin_bottom(8)
+
+        search_label = Gtk.Label(label="Search:")
+        search_label.set_size_request(60, -1)
+        search_box.append(search_label)
+
+        self.search_entry = Gtk.SearchEntry()
+        self.search_entry.set_placeholder_text("Filter countries & cities...")
+        self.search_entry.set_hexpand(True)
+        self.search_entry.connect("search-changed", self.on_search_changed)
+        search_box.append(self.search_entry)
+
+        self.append(search_box)
 
         # Paned layout: countries on left, cities on right
         paned_container = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
@@ -105,14 +124,40 @@ class ServersPane(Gtk.Box):
         thread = threading.Thread(target=worker, daemon=True)
         thread.start()
 
+    def on_search_changed(self, search_entry):
+        """Filter countries and cities by search text."""
+        self.search_text = search_entry.get_text().lower()
+        self.refresh_countries_display()
+        self.refresh_cities_display()
+
+    def refresh_countries_display(self):
+        """Refresh country list based on search."""
+        self.countries_listbox.remove_all()
+        for country in self.all_countries:
+            if self.search_text in country.lower():
+                row = Gtk.ListBoxRow()
+                label = Gtk.Label(label=country, xalign=0)
+                label.set_hexpand(True)
+                row.set_child(label)
+                self.countries_listbox.append(row)
+
+    def refresh_cities_display(self):
+        """Refresh city list based on search."""
+        if not self.selected_country:
+            return
+        self.cities_listbox.remove_all()
+        for city in self.all_cities:
+            if self.search_text in city.lower():
+                row = Gtk.ListBoxRow()
+                label = Gtk.Label(label=city, xalign=0)
+                label.set_hexpand(True)
+                row.set_child(label)
+                self.cities_listbox.append(row)
+
     def on_countries_loaded(self, countries):
         """Populate countries listbox."""
-        for country in countries:
-            row = Gtk.ListBoxRow()
-            label = Gtk.Label(label=country, xalign=0)
-            label.set_hexpand(True)
-            row.set_child(label)
-            self.countries_listbox.append(row)
+        self.all_countries = countries
+        self.refresh_countries_display()
         return False
 
     def on_country_selected(self, listbox, row):
@@ -142,12 +187,8 @@ class ServersPane(Gtk.Box):
 
     def on_cities_loaded(self, cities):
         """Populate cities listbox."""
-        for city in cities:
-            row = Gtk.ListBoxRow()
-            label = Gtk.Label(label=city, xalign=0)
-            label.set_hexpand(True)
-            row.set_child(label)
-            self.cities_listbox.append(row)
+        self.all_cities = cities
+        self.refresh_cities_display()
         return False
 
     def on_city_selected(self, listbox, row):
