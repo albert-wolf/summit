@@ -82,16 +82,21 @@ class SummitApp(Gtk.Application):
                 self.build_window()
                 # Show window immediately without waiting for data to load
                 self.window.present()
-                GLib.idle_add(self.restore_window_state)
-                GLib.idle_add(self.update_right_pane_visibility)
-                GLib.idle_add(self.reapply_css)
 
-                # Load initial data in background thread after window is shown
-                def load_data():
+                # Do all post-show work in background thread to keep UI responsive
+                def load_all():
                     import threading
-                    thread = threading.Thread(target=self.load_initial_pane_data, daemon=True)
-                    thread.start()
-                GLib.idle_add(load_data)
+                    # Restore window state
+                    GLib.idle_add(self.restore_window_state)
+                    # Update pane visibility
+                    GLib.idle_add(self.update_right_pane_visibility)
+                    # Load initial pane data (settings, status, etc.)
+                    self.load_initial_pane_data()
+                    # Reapply CSS (slow, do it last)
+                    GLib.idle_add(self.reapply_css)
+
+                thread = threading.Thread(target=load_all, daemon=True)
+                thread.start()
             except Exception as e:
                 print(f"[ERROR] Failed to build window: {e}")
                 import traceback
