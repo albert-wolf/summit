@@ -329,6 +329,7 @@ class SummitApp(Gtk.Application):
             on_status_change=self.on_status_change,
             on_connect_click=self.switch_to_servers_tab
         )
+        self.status_pane.set_app_ref(self)
         self.stack.add_named(self.status_pane, "status")
 
         # Tab 2: Servers Pane
