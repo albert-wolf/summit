@@ -333,6 +333,7 @@ class SummitApp(Gtk.Application):
 
         # Tab 2: Servers Pane
         self.servers_pane = ServersPane(self.nord)
+        self.servers_pane.set_app_ref(self)
         self.stack.add_named(self.servers_pane, "servers")
 
         # Tab 3: Settings Pane
