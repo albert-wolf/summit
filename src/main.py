@@ -408,6 +408,8 @@ class SummitApp(Gtk.Application):
 
         # Recent Connections Pane (created but only added to paned when on Status tab)
         self.recent_pane = RecentPane(self.nord)
+        self.recent_pane.set_app_ref(self)
+        self.recent_pane.refresh_favorites_display()
 
         # Set initial page based on config
         tab_map = ["status", "servers", "settings", "ports", "meshnet"]
