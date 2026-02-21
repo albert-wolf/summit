@@ -69,7 +69,13 @@ class SummitApp(Gtk.Application):
 
         if not self.window:
             try:
+                import time
+                t0 = time.time()
+                print("[STARTUP] Starting...")
+
                 self.load_config()
+                print(f"[STARTUP] Config loaded in {time.time()-t0:.3f}s")
+
                 # Check nordvpn installed
                 if not self.nord.is_installed():
                     dialog = Gtk.AlertDialog()
@@ -79,9 +85,15 @@ class SummitApp(Gtk.Application):
                     self.quit()
                     return
 
+                print(f"[STARTUP] Building window...")
+                t1 = time.time()
                 self.build_window()
+                print(f"[STARTUP] Window built in {time.time()-t1:.3f}s")
+
                 # Show window immediately - everything else happens in background via polling
+                print(f"[STARTUP] Showing window...")
                 self.window.present()
+                print(f"[STARTUP] Window shown! Total time: {time.time()-t0:.3f}s")
             except Exception as e:
                 print(f"[ERROR] Failed to build window: {e}")
                 import traceback
@@ -633,11 +645,30 @@ class SummitApp(Gtk.Application):
         self.poll_timer = GLib.timeout_add(interval, self.poll_status)
 
     def poll_status(self):
-        """Poll VPN status (runs in main thread)."""
-        if hasattr(self, 'status_pane'):
-            self.status_pane.update_status()
-        if hasattr(self, 'recent_pane'):
-            self.recent_pane.update_status()
+        """Start background thread to poll VPN status - never block the main thread."""
+        def worker():
+            try:
+                import time
+                t0 = time.time()
+
+                # Fetch status once and share between both panes
+                status = self.nord.get_status()
+
+                # Update both panes with the same status result
+                if hasattr(self, 'status_pane'):
+                    GLib.idle_add(self.status_pane.apply_status, status)
+                if hasattr(self, 'recent_pane'):
+                    GLib.idle_add(self.recent_pane.apply_status, status)
+
+                elapsed = time.time() - t0
+                if elapsed > 0.1:  # Only log if slow
+                    print(f"[POLL] Status fetch took {elapsed:.3f}s")
+            except Exception as e:
+                print(f"[ERROR] Poll failed: {e}")
+
+        import threading
+        thread = threading.Thread(target=worker, daemon=True)
+        thread.start()
         return True  # Keep polling
 
     def on_status_change(self, status):
