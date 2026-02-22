@@ -99,10 +99,34 @@ class SummitApp(Gtk.Application):
                 import traceback
                 traceback.print_exc()
 
+    def check_login_status(self):
+        """Check if logged in asynchronously, show dialog if not (runs via idle_add)."""
+        def worker():
+            is_logged_in = self.nord.is_logged_in()
+            GLib.idle_add(self.show_login_dialog_if_needed, is_logged_in)
+
+        import threading
+        thread = threading.Thread(target=worker, daemon=True)
+        thread.start()
+        return False
+
+    def show_login_dialog_if_needed(self, is_logged_in):
+        """Show login dialog if not logged in (runs on main thread via idle_add)."""
+        if not is_logged_in:
+            dialog = Gtk.AlertDialog()
+            dialog.set_message("Not Logged In")
+            dialog.set_detail_text("Please log in to NordVPN first:\nRun 'nordvpn login' in a terminal")
+            dialog.present(self.window)
+        return False
+
     def on_activate(self, app=None):
         """Called when app is activated."""
         if self.window:
+            import time
+            t = time.time()
+            print(f"[ACTIVATE] Starting...")
             self.window.present()
+            print(f"[ACTIVATE] window.present() took {time.time()-t:.3f}s")
             GLib.idle_add(self.restore_window_state)
             GLib.idle_add(self.update_right_pane_visibility)  # Update visibility after window shows
             # Reapply CSS after window is shown to override any theme defaults
@@ -336,8 +360,10 @@ class SummitApp(Gtk.Application):
 
         # Add panes to stack BEFORE creating HeaderBar
         # (so panes exist when button activation fires)
+        import time
 
         # Tab 1: Status Pane
+        t1 = time.time()
         self.status_pane = StatusPane(
             self.nord,
             on_status_change=self.on_status_change,
@@ -345,15 +371,20 @@ class SummitApp(Gtk.Application):
         )
         self.status_pane.set_app_ref(self)
         self.stack.add_named(self.status_pane, "status")
+        print(f"[STARTUP] StatusPane __init__ took {time.time()-t1:.3f}s")
 
         # Tab 2: Servers Pane
+        t2 = time.time()
         self.servers_pane = ServersPane(self.nord)
         self.servers_pane.set_app_ref(self)
         self.stack.add_named(self.servers_pane, "servers")
+        print(f"[STARTUP] ServersPane __init__ took {time.time()-t2:.3f}s")
 
         # Tab 3: Settings Pane
+        t3 = time.time()
         self.settings_pane = SettingsPane(self.nord)
         self.stack.add_named(self.settings_pane, "settings")
+        print(f"[STARTUP] SettingsPane __init__ took {time.time()-t3:.3f}s")
 
         # Load auto-connect state
         self.settings_pane.autoconnect_switch.set_active(self.config.get("autoconnect_enabled", False))
@@ -402,18 +433,25 @@ class SummitApp(Gtk.Application):
         thread.start()
 
         # Tab 4: Ports Pane
+        t4 = time.time()
         self.ports_pane = PortsPane(self.nord)
         self.stack.add_named(self.ports_pane, "ports")
+        print(f"[STARTUP] PortsPane __init__ took {time.time()-t4:.3f}s")
 
         # Tab 5: Meshnet Pane
+        t5 = time.time()
         self.meshnet_pane = MeshnetPane(self.nord)
         self.stack.add_named(self.meshnet_pane, "meshnet")
+        print(f"[STARTUP] MeshnetPane __init__ took {time.time()-t5:.3f}s")
 
         # HeaderBar with tab buttons - set as window titlebar
+        t_header = time.time()
         self.header_bar = self.build_headerbar()
         self.window.set_titlebar(self.header_bar)
+        print(f"[STARTUP] HeaderBar build took {time.time()-t_header:.3f}s")
 
         # Main box
+        t_main = time.time()
         main_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
 
         # Horizontal paned: stack on left, recent connections on right
@@ -422,9 +460,11 @@ class SummitApp(Gtk.Application):
         self.content_paned.set_position(550)
 
         # Recent Connections Pane (created but only added to paned when on Status tab)
+        t_recent = time.time()
         self.recent_pane = RecentPane(self.nord)
         self.recent_pane.set_app_ref(self)
         self.recent_pane.refresh_favorites_display()
+        print(f"[STARTUP] RecentPane __init__ took {time.time()-t_recent:.3f}s")
 
         # Set initial page based on config
         tab_map = ["status", "servers", "settings", "ports", "meshnet"]
@@ -439,21 +479,21 @@ class SummitApp(Gtk.Application):
         self.content_paned.set_vexpand(True)
         self.content_paned.set_hexpand(True)
         main_box.append(self.content_paned)
+        print(f"[STARTUP] Main layout setup took {time.time()-t_main:.3f}s")
 
         # Wrap main content with toast overlay
+        t_toast = time.time()
         self.toast_overlay = ToastOverlay()
         self.toast_overlay.set_child(main_box)
         self.window.set_child(self.toast_overlay)
-
-        # Check login status
-        if not self.nord.is_logged_in():
-            dialog = Gtk.AlertDialog()
-            dialog.set_message("Not Logged In")
-            dialog.set_detail_text("Please log in to NordVPN first:\nRun 'nordvpn login' in a terminal")
-            dialog.present(self.window)
+        print(f"[STARTUP] Toast overlay setup took {time.time()-t_toast:.3f}s")
 
         # Start polling (initial pane data loads in background after window shows)
+        print(f"[STARTUP] build_window complete, about to start polling")
         self.start_polling()
+
+        # Check login status asynchronously after window appears
+        GLib.idle_add(self.check_login_status)
 
     def load_initial_pane_data(self):
         """Load initial data for all panes in background after window shows."""
