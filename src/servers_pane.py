@@ -172,21 +172,35 @@ class ServersPane(Gtk.Box):
         """Load all cities from all countries in parallel for searching."""
         def worker():
             try:
+                import time
+                # Wait a bit to let UI settle after window appears
+                time.sleep(0.5)
+
+                t0 = time.time()
                 countries = self.nord.get_countries()
+                print(f"[CITIES] Got {len(countries)} countries in {time.time()-t0:.3f}s")
+
                 all_cities = set()
 
-                # Load cities in parallel (max 10 concurrent requests)
+                # Load cities in parallel (max 4 concurrent requests - reduced from 10 to avoid daemon socket saturation)
                 import concurrent.futures
-                with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+                t_start = time.time()
+                with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
                     futures = {executor.submit(self.nord.get_cities, country): country for country in countries}
+                    completed = 0
                     for future in concurrent.futures.as_completed(futures):
                         try:
                             cities = future.result()
                             all_cities.update(cities)
+                            completed += 1
+                            if completed % 10 == 0:
+                                elapsed = time.time() - t_start
+                                print(f"[CITIES] Loaded {completed}/{len(countries)} countries in {elapsed:.3f}s")
                         except Exception as e:
                             print(f"[WARNING] Error loading cities for {futures[future]}: {e}")
 
                 self.all_cities = sorted(list(all_cities))
+                print(f"[CITIES] All {len(self.all_cities)} cities loaded in {time.time()-t0:.3f}s")
             except Exception as e:
                 print(f"[ERROR] Failed to load all cities: {e}")
 

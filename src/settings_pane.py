@@ -170,12 +170,20 @@ class SettingsPane(Gtk.Box):
         """Load settings. If synchronous=True, load immediately; else load in background."""
         if synchronous:
             # Synchronous load - called before window shows
+            import time
+            t0 = time.time()
             settings = self.nord.get_settings()
+            print(f"[SETTINGS] get_settings() took {time.time()-t0:.3f}s")
             self.apply_settings_to_ui(settings)
         else:
             # Asynchronous load - for updates after window is shown
             def worker():
+                import time
+                t0 = time.time()
+                print(f"[SETTINGS] Background load starting...")
                 settings = self.nord.get_settings()
+                elapsed = time.time() - t0
+                print(f"[SETTINGS] Background get_settings() took {elapsed:.3f}s")
                 GLib.idle_add(self.apply_settings_to_ui, settings)
 
             import threading

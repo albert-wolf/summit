@@ -101,6 +101,10 @@ class MeshnetPane(Gtk.Box):
         """Load meshnet state in background thread to avoid blocking startup."""
         def worker():
             try:
+                import time
+                # Wait a bit to let UI settle after window appears
+                time.sleep(0.3)
+
                 settings = self.nord.get_settings()
                 meshnet_enabled = settings.get("Meshnet", "disabled").lower() == "enabled"
 
