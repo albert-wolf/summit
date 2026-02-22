@@ -69,12 +69,7 @@ class SummitApp(Gtk.Application):
 
         if not self.window:
             try:
-                import time
-                t0 = time.time()
-                print("[STARTUP] Starting...")
-
                 self.load_config()
-                print(f"[STARTUP] Config loaded in {time.time()-t0:.3f}s")
 
                 # Check nordvpn installed
                 if not self.nord.is_installed():
@@ -85,15 +80,10 @@ class SummitApp(Gtk.Application):
                     self.quit()
                     return
 
-                print(f"[STARTUP] Building window...")
-                t1 = time.time()
                 self.build_window()
-                print(f"[STARTUP] Window built in {time.time()-t1:.3f}s")
 
                 # Show window immediately - everything else happens in background via polling
-                print(f"[STARTUP] Showing window...")
                 self.window.present()
-                print(f"[STARTUP] Window shown! Total time: {time.time()-t0:.3f}s")
             except Exception as e:
                 print(f"[ERROR] Failed to build window: {e}")
                 import traceback
@@ -122,11 +112,7 @@ class SummitApp(Gtk.Application):
     def on_activate(self, app=None):
         """Called when app is activated."""
         if self.window:
-            import time
-            t = time.time()
-            print(f"[ACTIVATE] Starting...")
             self.window.present()
-            print(f"[ACTIVATE] window.present() took {time.time()-t:.3f}s")
             GLib.idle_add(self.restore_window_state)
             GLib.idle_add(self.update_right_pane_visibility)  # Update visibility after window shows
             # Reapply CSS after window is shown to override any theme defaults
@@ -360,10 +346,8 @@ class SummitApp(Gtk.Application):
 
         # Add panes to stack BEFORE creating HeaderBar
         # (so panes exist when button activation fires)
-        import time
 
         # Tab 1: Status Pane
-        t1 = time.time()
         self.status_pane = StatusPane(
             self.nord,
             on_status_change=self.on_status_change,
@@ -371,20 +355,15 @@ class SummitApp(Gtk.Application):
         )
         self.status_pane.set_app_ref(self)
         self.stack.add_named(self.status_pane, "status")
-        print(f"[STARTUP] StatusPane __init__ took {time.time()-t1:.3f}s")
 
         # Tab 2: Servers Pane
-        t2 = time.time()
         self.servers_pane = ServersPane(self.nord)
         self.servers_pane.set_app_ref(self)
         self.stack.add_named(self.servers_pane, "servers")
-        print(f"[STARTUP] ServersPane __init__ took {time.time()-t2:.3f}s")
 
         # Tab 3: Settings Pane
-        t3 = time.time()
         self.settings_pane = SettingsPane(self.nord)
         self.stack.add_named(self.settings_pane, "settings")
-        print(f"[STARTUP] SettingsPane __init__ took {time.time()-t3:.3f}s")
 
         # Load auto-connect state
         self.settings_pane.autoconnect_switch.set_active(self.config.get("autoconnect_enabled", False))
@@ -433,25 +412,18 @@ class SummitApp(Gtk.Application):
         thread.start()
 
         # Tab 4: Ports Pane
-        t4 = time.time()
         self.ports_pane = PortsPane(self.nord)
         self.stack.add_named(self.ports_pane, "ports")
-        print(f"[STARTUP] PortsPane __init__ took {time.time()-t4:.3f}s")
 
         # Tab 5: Meshnet Pane
-        t5 = time.time()
         self.meshnet_pane = MeshnetPane(self.nord)
         self.stack.add_named(self.meshnet_pane, "meshnet")
-        print(f"[STARTUP] MeshnetPane __init__ took {time.time()-t5:.3f}s")
 
         # HeaderBar with tab buttons - set as window titlebar
-        t_header = time.time()
         self.header_bar = self.build_headerbar()
         self.window.set_titlebar(self.header_bar)
-        print(f"[STARTUP] HeaderBar build took {time.time()-t_header:.3f}s")
 
         # Main box
-        t_main = time.time()
         main_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
 
         # Horizontal paned: stack on left, recent connections on right
@@ -460,11 +432,9 @@ class SummitApp(Gtk.Application):
         self.content_paned.set_position(550)
 
         # Recent Connections Pane (created but only added to paned when on Status tab)
-        t_recent = time.time()
         self.recent_pane = RecentPane(self.nord)
         self.recent_pane.set_app_ref(self)
         self.recent_pane.refresh_favorites_display()
-        print(f"[STARTUP] RecentPane __init__ took {time.time()-t_recent:.3f}s")
 
         # Set initial page based on config
         tab_map = ["status", "servers", "settings", "ports", "meshnet"]
@@ -479,17 +449,13 @@ class SummitApp(Gtk.Application):
         self.content_paned.set_vexpand(True)
         self.content_paned.set_hexpand(True)
         main_box.append(self.content_paned)
-        print(f"[STARTUP] Main layout setup took {time.time()-t_main:.3f}s")
 
         # Wrap main content with toast overlay
-        t_toast = time.time()
         self.toast_overlay = ToastOverlay()
         self.toast_overlay.set_child(main_box)
         self.window.set_child(self.toast_overlay)
-        print(f"[STARTUP] Toast overlay setup took {time.time()-t_toast:.3f}s")
 
         # Start polling (initial pane data loads in background after window shows)
-        print(f"[STARTUP] build_window complete, about to start polling")
         self.start_polling()
 
         # Check login status asynchronously after window appears
@@ -602,10 +568,6 @@ class SummitApp(Gtk.Application):
 
     def on_tab_button_toggled(self, button: Gtk.ToggleButton, tab_name: str):
         """Handle tab button toggle."""
-        import time
-        t0 = time.time()
-        print(f"[TAB] Clicking {tab_name}...")
-
         # Prevent infinite recursion when updating tab buttons
         if self._updating_tabs:
             return
@@ -614,22 +576,13 @@ class SummitApp(Gtk.Application):
             self._updating_tabs = True
             try:
                 # Deactivate all other buttons
-                t1 = time.time()
                 for name, btn in self.tab_buttons.items():
                     if name != tab_name:
                         btn.set_active(False)
-                print(f"[TAB] Deactivating other buttons took {time.time()-t1:.3f}s")
 
                 # Switch to the new tab
-                t2 = time.time()
                 self.stack.set_visible_child_name(tab_name)
-                print(f"[TAB] Stack switch took {time.time()-t2:.3f}s")
-
-                t3 = time.time()
                 self.update_right_pane_visibility()
-                print(f"[TAB] Update right pane took {time.time()-t3:.3f}s")
-
-                print(f"[TAB] Total tab switch took {time.time()-t0:.3f}s")
             finally:
                 self._updating_tabs = False
         else:
@@ -701,9 +654,6 @@ class SummitApp(Gtk.Application):
         """Start background thread to poll VPN status - never block the main thread."""
         def worker():
             try:
-                import time
-                t0 = time.time()
-
                 # Fetch status once and share between both panes
                 status = self.nord.get_status()
 
@@ -712,10 +662,6 @@ class SummitApp(Gtk.Application):
                     GLib.idle_add(self.status_pane.apply_status, status)
                 if hasattr(self, 'recent_pane'):
                     GLib.idle_add(self.recent_pane.apply_status, status)
-
-                elapsed = time.time() - t0
-                if elapsed > 0.1:  # Only log if slow
-                    print(f"[POLL] Status fetch took {elapsed:.3f}s")
             except Exception as e:
                 print(f"[ERROR] Poll failed: {e}")
 
