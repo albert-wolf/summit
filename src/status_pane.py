@@ -19,13 +19,23 @@ class StatusPane(Gtk.Box):
         self.on_connect_click = on_connect_click
         self.current_status = None
         self.app_ref = None
+        self.is_connecting = False
 
-        # Status indicator
+        # Status indicator with optional spinner
         status_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+
+        self.status_indicator_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=4)
         self.status_dot = Gtk.Label(label="●")
         self.status_dot.add_css_class("heading")
         self.status_dot.set_size_request(24, 24)
-        status_box.append(self.status_dot)
+        self.status_indicator_box.append(self.status_dot)
+
+        self.status_spinner = Gtk.Spinner()
+        self.status_spinner.set_size_request(24, 24)
+        self.status_spinner.set_visible(False)
+        self.status_indicator_box.append(self.status_spinner)
+
+        status_box.append(self.status_indicator_box)
 
         self.status_label = Gtk.Label(label="Disconnected")
         self.status_label.add_css_class("heading")
@@ -81,9 +91,8 @@ class StatusPane(Gtk.Box):
 
         self.append(button_box)
 
-    def update_status(self):
-        """Update status display from summit_manager."""
-        status = self.nord.get_status()
+    def apply_status(self, status):
+        """Apply pre-fetched status to UI (called from polling thread via idle_add)."""
         if not status:
             self.status_label.set_label("Disconnected")
             self.status_dot.set_label("●")
@@ -122,6 +131,12 @@ class StatusPane(Gtk.Box):
         self.current_status = status
         if self.on_status_change:
             self.on_status_change(status)
+        return False
+
+    def update_status(self):
+        """Update status display from summit_manager (synchronous version for manual updates)."""
+        status = self.nord.get_status()
+        self.apply_status(status)
 
     def on_connect_clicked(self, button):
         """Connect button clicked - switch to servers tab."""
@@ -156,6 +171,9 @@ class StatusPane(Gtk.Box):
 
     def on_reconnect_clicked(self, button):
         """Reconnect to last server."""
+        self.is_connecting = True
+        self.status_spinner.set_visible(True)
+        self.status_spinner.start()
         button.set_sensitive(False)
         button.set_label("Reconnecting...")
 
@@ -169,6 +187,9 @@ class StatusPane(Gtk.Box):
 
     def on_reconnect_done(self, success, message, button):
         """Handle reconnect completion."""
+        self.is_connecting = False
+        self.status_spinner.stop()
+        self.status_spinner.set_visible(False)
         button.set_sensitive(True)
         button.set_label("Reconnect")
         if not success and self.app_ref:

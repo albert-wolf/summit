@@ -87,7 +87,6 @@ class ServersPane(Gtk.Box):
         self.cities_listbox.set_hexpand(True)
         self.cities_listbox.set_vexpand(True)
         self.cities_listbox.connect("row-selected", self.on_city_selected)
-        self.cities_listbox.connect("row-activated", self.on_city_row_activated)
 
         cities_scrolled = Gtk.ScrolledWindow()
         cities_scrolled.set_child(self.cities_listbox)
@@ -123,8 +122,9 @@ class ServersPane(Gtk.Box):
 
         self.append(button_box)
 
-        # Load countries in background
+        # Load countries and all cities in background
         self.load_countries()
+        self.load_all_cities()
 
     def set_app_ref(self, app):
         """Set reference to app for showing toasts."""
@@ -168,6 +168,36 @@ class ServersPane(Gtk.Box):
         thread = threading.Thread(target=worker, daemon=True)
         thread.start()
 
+    def load_all_cities(self):
+        """Load all cities from all countries in parallel for searching."""
+        def worker():
+            try:
+                import time
+                # Wait a bit to let UI settle after window appears
+                time.sleep(0.5)
+
+                countries = self.nord.get_countries()
+                all_cities = set()
+
+                # Load cities in parallel (max 4 concurrent requests to avoid daemon socket saturation)
+                import concurrent.futures
+                with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
+                    futures = {executor.submit(self.nord.get_cities, country): country for country in countries}
+                    for future in concurrent.futures.as_completed(futures):
+                        try:
+                            cities = future.result()
+                            all_cities.update(cities)
+                        except Exception as e:
+                            print(f"[WARNING] Error loading cities for {futures[future]}: {e}")
+
+                self.all_cities = sorted(list(all_cities))
+            except Exception as e:
+                print(f"[ERROR] Failed to load all cities: {e}")
+
+        import threading
+        thread = threading.Thread(target=worker, daemon=True)
+        thread.start()
+
     def on_search_changed(self, search_entry):
         """Filter countries and cities by search text."""
         self.search_text = search_entry.get_text().lower()
@@ -187,11 +217,21 @@ class ServersPane(Gtk.Box):
 
     def refresh_cities_display(self):
         """Refresh city list based on search."""
-        if not self.selected_country:
-            return
         self.cities_listbox.remove_all()
-        for city in self.all_cities:
-            if self.search_text in city.lower():
+
+        # When searching, show all matching cities; when not searching, show cities from selected country
+        if self.search_text:
+            # Search mode: show matching cities from all countries
+            for city in self.all_cities:
+                if self.search_text in city.lower():
+                    row = Gtk.ListBoxRow()
+                    label = Gtk.Label(label=city, xalign=0)
+                    label.set_hexpand(True)
+                    row.set_child(label)
+                    self.cities_listbox.append(row)
+        elif self.selected_country:
+            # Normal mode: show cities from selected country
+            for city in self.all_cities:
                 row = Gtk.ListBoxRow()
                 label = Gtk.Label(label=city, xalign=0)
                 label.set_hexpand(True)
@@ -207,6 +247,10 @@ class ServersPane(Gtk.Box):
     def on_country_selected(self, listbox, row):
         """Load cities when country is selected."""
         if row:
+            # Clear search when country is explicitly selected
+            self.search_text = ""
+            self.search_entry.set_text("")
+
             country_label = row.get_child()
             self.selected_country = country_label.get_label()
             self.selected_city = None
@@ -244,13 +288,6 @@ class ServersPane(Gtk.Box):
         else:
             self.selected_city = None
             self.favorite_button.set_sensitive(False)
-
-    def on_city_row_activated(self, listbox, row):
-        """Handle double-click on city to connect directly."""
-        if row and self.selected_country:
-            city_label = row.get_child()
-            city = city_label.get_label()
-            self._do_connect(self.selected_country, city)
 
     def _do_connect(self, country, city=None):
         """Shared connection logic for button and double-click handlers.

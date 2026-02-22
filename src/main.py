@@ -70,6 +70,7 @@ class SummitApp(Gtk.Application):
         if not self.window:
             try:
                 self.load_config()
+
                 # Check nordvpn installed
                 if not self.nord.is_installed():
                     dialog = Gtk.AlertDialog()
@@ -80,10 +81,33 @@ class SummitApp(Gtk.Application):
                     return
 
                 self.build_window()
+
+                # Show window immediately - everything else happens in background via polling
+                self.window.present()
             except Exception as e:
                 print(f"[ERROR] Failed to build window: {e}")
                 import traceback
                 traceback.print_exc()
+
+    def check_login_status(self):
+        """Check if logged in asynchronously, show dialog if not (runs via idle_add)."""
+        def worker():
+            is_logged_in = self.nord.is_logged_in()
+            GLib.idle_add(self.show_login_dialog_if_needed, is_logged_in)
+
+        import threading
+        thread = threading.Thread(target=worker, daemon=True)
+        thread.start()
+        return False
+
+    def show_login_dialog_if_needed(self, is_logged_in):
+        """Show login dialog if not logged in (runs on main thread via idle_add)."""
+        if not is_logged_in:
+            dialog = Gtk.AlertDialog()
+            dialog.set_message("Not Logged In")
+            dialog.set_detail_text("Please log in to NordVPN first:\nRun 'nordvpn login' in a terminal")
+            dialog.present(self.window)
+        return False
 
     def on_activate(self, app=None):
         """Called when app is activated."""
@@ -431,24 +455,17 @@ class SummitApp(Gtk.Application):
         self.toast_overlay.set_child(main_box)
         self.window.set_child(self.toast_overlay)
 
-        # Check login status
-        if not self.nord.is_logged_in():
-            dialog = Gtk.AlertDialog()
-            dialog.set_message("Not Logged In")
-            dialog.set_detail_text("Please log in to NordVPN first:\nRun 'nordvpn login' in a terminal")
-            dialog.present(self.window)
-
-        # Load initial data for panes (before showing window)
-        self.load_initial_pane_data()
-
-        # Start polling
+        # Start polling (initial pane data loads in background after window shows)
         self.start_polling()
 
+        # Check login status asynchronously after window appears
+        GLib.idle_add(self.check_login_status)
+
     def load_initial_pane_data(self):
-        """Load initial data for all panes before showing the window."""
-        # Load settings synchronously for settings pane
+        """Load initial data for all panes in background after window shows."""
+        # Load settings asynchronously
         if hasattr(self, 'settings_pane'):
-            self.settings_pane.load_settings(synchronous=True)
+            self.settings_pane.load_settings(synchronous=False)
         # Load status for status pane
         if hasattr(self, 'status_pane'):
             self.status_pane.update_status()
@@ -634,11 +651,23 @@ class SummitApp(Gtk.Application):
         self.poll_timer = GLib.timeout_add(interval, self.poll_status)
 
     def poll_status(self):
-        """Poll VPN status (runs in main thread)."""
-        if hasattr(self, 'status_pane'):
-            self.status_pane.update_status()
-        if hasattr(self, 'recent_pane'):
-            self.recent_pane.update_status()
+        """Start background thread to poll VPN status - never block the main thread."""
+        def worker():
+            try:
+                # Fetch status once and share between both panes
+                status = self.nord.get_status()
+
+                # Update both panes with the same status result
+                if hasattr(self, 'status_pane'):
+                    GLib.idle_add(self.status_pane.apply_status, status)
+                if hasattr(self, 'recent_pane'):
+                    GLib.idle_add(self.recent_pane.apply_status, status)
+            except Exception as e:
+                print(f"[ERROR] Poll failed: {e}")
+
+        import threading
+        thread = threading.Thread(target=worker, daemon=True)
+        thread.start()
         return True  # Keep polling
 
     def on_status_change(self, status):

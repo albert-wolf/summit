@@ -66,8 +66,8 @@ class MeshnetPane(Gtk.Box):
         scrolled.set_child(panes_container)
         self.append(scrolled)
 
-        # Load initial state
-        self.load_meshnet_state()
+        # Load initial state asynchronously to avoid blocking main thread on startup
+        self.load_meshnet_state_async()
 
     def create_pane(self, title: str) -> Gtk.Box:
         """Create a styled pane with title and border."""
@@ -96,6 +96,32 @@ class MeshnetPane(Gtk.Box):
             self.apply_meshnet_state(False, [])
 
         self.initializing = False
+
+    def load_meshnet_state_async(self):
+        """Load meshnet state in background thread to avoid blocking startup."""
+        def worker():
+            try:
+                import time
+                # Wait a bit to let UI settle after window appears
+                time.sleep(0.3)
+
+                settings = self.nord.get_settings()
+                meshnet_enabled = settings.get("Meshnet", "disabled").lower() == "enabled"
+
+                if meshnet_enabled:
+                    enabled, peers = self.nord.get_meshnet_peers()
+                else:
+                    enabled, peers = False, []
+
+                GLib.idle_add(self.apply_meshnet_state, enabled, peers)
+                GLib.idle_add(lambda: setattr(self, 'initializing', False))
+            except Exception as e:
+                print(f"[ERROR] Failed to load meshnet state: {e}")
+                GLib.idle_add(lambda: setattr(self, 'initializing', False))
+
+        import threading
+        thread = threading.Thread(target=worker, daemon=True)
+        thread.start()
 
     def apply_meshnet_state(self, enabled, peers):
         """Apply meshnet state to UI."""
