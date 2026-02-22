@@ -602,6 +602,10 @@ class SummitApp(Gtk.Application):
 
     def on_tab_button_toggled(self, button: Gtk.ToggleButton, tab_name: str):
         """Handle tab button toggle."""
+        import time
+        t0 = time.time()
+        print(f"[TAB] Clicking {tab_name}...")
+
         # Prevent infinite recursion when updating tab buttons
         if self._updating_tabs:
             return
@@ -610,13 +614,22 @@ class SummitApp(Gtk.Application):
             self._updating_tabs = True
             try:
                 # Deactivate all other buttons
+                t1 = time.time()
                 for name, btn in self.tab_buttons.items():
                     if name != tab_name:
                         btn.set_active(False)
+                print(f"[TAB] Deactivating other buttons took {time.time()-t1:.3f}s")
 
                 # Switch to the new tab
+                t2 = time.time()
                 self.stack.set_visible_child_name(tab_name)
+                print(f"[TAB] Stack switch took {time.time()-t2:.3f}s")
+
+                t3 = time.time()
                 self.update_right_pane_visibility()
+                print(f"[TAB] Update right pane took {time.time()-t3:.3f}s")
+
+                print(f"[TAB] Total tab switch took {time.time()-t0:.3f}s")
             finally:
                 self._updating_tabs = False
         else:
