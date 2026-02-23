@@ -109,6 +109,12 @@ sudo dpkg -r summit
 - Meshnet must be enabled before viewing peers
 - Country/city names use underscore format (NordVPN CLI format)
 
+## Support This Project
+
+If you find Summit useful and want to support future development, your support helps fund new projects and improvements.
+
+**[Buy me a coffee ☕](https://ko-fi.com/wolf792280)**
+
 ## License
 
 MIT License + Commons Clause. Free for personal use. Commercial use requires written permission from the copyright holder. See [LICENSE](LICENSE) for full terms.
