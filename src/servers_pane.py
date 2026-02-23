@@ -241,46 +241,14 @@ class ServersPane(Gtk.Box):
         self.select_countries_by_name(countries_to_select)
 
     def refresh_countries_display(self):
-        """Refresh country list based on search.
-
-        When searching: show all countries, but only those with matching cities
-        When not searching: show all countries
-        """
+        """Always show all countries. Search does not filter this list."""
         self.countries_listbox.remove_all()
-
-        if self.search_text:
-            # Search mode: show only countries that have cities matching the search
-            matching_cities = [city for city in self.all_cities if self.search_text in city.lower()]
-            countries_with_matches = set()
-            for city in matching_cities:
-                if city in self.city_to_countries:
-                    countries_with_matches.update(self.city_to_countries[city])
-
-            # If cities matched, show those countries. Otherwise fall back to country name matching
-            if countries_with_matches:
-                for country in sorted(countries_with_matches):
-                    row = Gtk.ListBoxRow()
-                    label = Gtk.Label(label=country, xalign=0)
-                    label.set_hexpand(True)
-                    row.set_child(label)
-                    self.countries_listbox.append(row)
-            else:
-                # No cities matched, show countries matching search text
-                for country in self.all_countries:
-                    if self.search_text in country.lower():
-                        row = Gtk.ListBoxRow()
-                        label = Gtk.Label(label=country, xalign=0)
-                        label.set_hexpand(True)
-                        row.set_child(label)
-                        self.countries_listbox.append(row)
-        else:
-            # No search: show all countries
-            for country in self.all_countries:
-                row = Gtk.ListBoxRow()
-                label = Gtk.Label(label=country, xalign=0)
-                label.set_hexpand(True)
-                row.set_child(label)
-                self.countries_listbox.append(row)
+        for country in self.all_countries:
+            row = Gtk.ListBoxRow()
+            label = Gtk.Label(label=country, xalign=0)
+            label.set_hexpand(True)
+            row.set_child(label)
+            self.countries_listbox.append(row)
 
     def refresh_cities_display(self):
         """Refresh city list based on search."""
@@ -320,8 +288,8 @@ class ServersPane(Gtk.Box):
         # Block the row-selected signal to prevent on_country_selected from clearing search
         self.countries_listbox.handler_block(self._country_selected_handler_id)
 
+        first_match_row = None
         try:
-            # Iterate through all rows in the listbox
             row_index = 0
             while True:
                 row = self.countries_listbox.get_row_at_index(row_index)
@@ -333,10 +301,15 @@ class ServersPane(Gtk.Box):
                     country = label.get_label().lower()
                     if country in country_names_lower:
                         self.countries_listbox.select_row(row)
+                        if first_match_row is None:
+                            first_match_row = row
                 row_index += 1
         finally:
-            # Always restore signal handling
             self.countries_listbox.handler_unblock(self._country_selected_handler_id)
+
+        # Scroll to first matched country so user can see the highlight
+        if first_match_row:
+            GLib.idle_add(first_match_row.grab_focus)
 
     def get_countries_for_search_results(self):
         """Get list of countries that should be selected based on current search.
@@ -449,11 +422,18 @@ class ServersPane(Gtk.Box):
             print(f"[WARNING] Failed to save cache: {e}")
 
     def on_city_selected(self, listbox, row):
-        """Update selected city."""
+        """Update selected city. In search mode, also derive the country from the mapping."""
         if row:
             city_label = row.get_child()
             self.selected_city = city_label.get_label()
             self.favorite_button.set_sensitive(True)
+            self.connect_btn.set_sensitive(True)
+
+            # In search mode, selected_country may not be set — derive it from the mapping
+            if self.search_text and not self.selected_country:
+                countries = self.city_to_countries.get(self.selected_city, [])
+                if len(countries) == 1:
+                    self.selected_country = countries[0]
         else:
             self.selected_city = None
             self.favorite_button.set_sensitive(False)
