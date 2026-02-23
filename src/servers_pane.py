@@ -20,6 +20,7 @@ class ServersPane(Gtk.Box):
         self.search_text = ""
         self.all_countries = []
         self.all_cities = []
+        self.city_to_countries = {}  # Maps city name to list of countries
         self.app_ref = None
 
         # Search bar
@@ -122,6 +123,12 @@ class ServersPane(Gtk.Box):
 
         self.append(button_box)
 
+        # Try to load cached city_to_countries for instant startup
+        cached_mapping = self.load_city_to_countries_from_cache()
+        if cached_mapping:
+            self.city_to_countries = cached_mapping
+        # Then load fresh cities in background (will update cache if changed)
+
         # Load countries and all cities in background
         self.load_countries()
         self.load_all_cities()
@@ -178,6 +185,7 @@ class ServersPane(Gtk.Box):
 
                 countries = self.nord.get_countries()
                 all_cities = set()
+                city_to_countries = {}  # Build mapping: city -> list of countries
 
                 # Load cities in parallel (max 4 concurrent requests to avoid daemon socket saturation)
                 import concurrent.futures
@@ -185,12 +193,28 @@ class ServersPane(Gtk.Box):
                     futures = {executor.submit(self.nord.get_cities, country): country for country in countries}
                     for future in concurrent.futures.as_completed(futures):
                         try:
+                            country = futures[future]
                             cities = future.result()
                             all_cities.update(cities)
+
+                            # Build city_to_countries mapping
+                            for city in cities:
+                                if city not in city_to_countries:
+                                    city_to_countries[city] = []
+                                city_to_countries[city].append(country)
                         except Exception as e:
                             print(f"[WARNING] Error loading cities for {futures[future]}: {e}")
 
-                self.all_cities = sorted(list(all_cities))
+                # Check if data changed
+                if city_to_countries != self.city_to_countries:
+                    # Data changed, update and cache silently
+                    self.all_cities = sorted(list(all_cities))
+                    self.city_to_countries = city_to_countries
+                    # Save updated cache
+                    GLib.idle_add(self.save_city_to_countries_to_cache, city_to_countries)
+                    print("[INFO] City cache updated with fresh data")
+                else:
+                    print("[INFO] City cache is up-to-date")
             except Exception as e:
                 print(f"[ERROR] Failed to load all cities: {e}")
 
@@ -203,6 +227,10 @@ class ServersPane(Gtk.Box):
         self.search_text = search_entry.get_text().lower()
         self.refresh_countries_display()
         self.refresh_cities_display()
+
+        # Auto-select countries based on search results
+        countries_to_select = self.get_countries_for_search_results()
+        self.select_countries_by_name(countries_to_select)
 
     def refresh_countries_display(self):
         """Refresh country list based on search."""
@@ -237,6 +265,56 @@ class ServersPane(Gtk.Box):
                 label.set_hexpand(True)
                 row.set_child(label)
                 self.cities_listbox.append(row)
+
+    def select_countries_by_name(self, country_names):
+        """Select multiple countries in the listbox.
+
+        Args:
+            country_names: List of country names to select
+        """
+        if not country_names:
+            self.countries_listbox.unselect_all()
+            return
+
+        country_names_lower = [name.lower() for name in country_names]
+
+        # Iterate through all rows in the listbox
+        row_index = 0
+        while True:
+            row = self.countries_listbox.get_row_at_index(row_index)
+            if not row:
+                break
+
+            label = row.get_child()
+            if isinstance(label, Gtk.Label):
+                country = label.get_label().lower()
+                if country in country_names_lower:
+                    self.countries_listbox.select_row(row)
+            row_index += 1
+
+    def get_countries_for_search_results(self):
+        """Get list of countries that should be selected based on current search.
+
+        Returns:
+            List of country names to auto-select
+        """
+        if not self.search_text:
+            return []
+
+        # Step 1: Find matching cities
+        matching_cities = [city for city in self.all_cities if self.search_text in city.lower()]
+
+        if matching_cities:
+            # Step 2: Extract countries for matching cities
+            countries = set()
+            for city in matching_cities:
+                if city in self.city_to_countries:
+                    countries.update(self.city_to_countries[city])
+            return sorted(list(countries))
+        else:
+            # Step 3: If no cities match, find matching countries
+            matching_countries = [country for country in self.all_countries if self.search_text in country.lower()]
+            return matching_countries
 
     def on_countries_loaded(self, countries):
         """Populate countries listbox."""
@@ -278,6 +356,51 @@ class ServersPane(Gtk.Box):
         self.all_cities = cities
         self.refresh_cities_display()
         return False
+
+    def load_city_to_countries_from_cache(self):
+        """Load city_to_countries mapping from cache file."""
+        import json
+        import os
+
+        cache_path = os.path.expanduser("~/.config/summit/server_cache.json")
+
+        if not os.path.exists(cache_path):
+            return None
+
+        try:
+            with open(cache_path, 'r') as f:
+                data = json.load(f)
+                if data.get("version") == 1:
+                    return data.get("city_to_countries", {})
+        except Exception as e:
+            print(f"[WARNING] Failed to load cache: {e}")
+
+        return None
+
+    def save_city_to_countries_to_cache(self, city_to_countries):
+        """Save city_to_countries mapping to cache file."""
+        import json
+        import os
+        from datetime import datetime
+
+        cache_path = os.path.expanduser("~/.config/summit/server_cache.json")
+        cache_dir = os.path.dirname(cache_path)
+
+        # Ensure directory exists
+        if not os.path.exists(cache_dir):
+            os.makedirs(cache_dir, exist_ok=True)
+
+        cache_data = {
+            "version": 1,
+            "city_to_countries": city_to_countries,
+            "last_updated": datetime.utcnow().isoformat() + "Z"
+        }
+
+        try:
+            with open(cache_path, 'w') as f:
+                json.dump(cache_data, f, indent=2)
+        except Exception as e:
+            print(f"[WARNING] Failed to save cache: {e}")
 
     def on_city_selected(self, listbox, row):
         """Update selected city."""

@@ -39,7 +39,7 @@ An unofficial community-developed GTK4 graphical interface for the NordVPN comma
 ### From .deb Package (Recommended)
 
 ```bash
-sudo dpkg -i nordgui_0.5.0_all.deb
+sudo dpkg -i nordgui_0.8.0_all.deb
 sudo apt-get install -f  # Install dependencies if needed
 nordgui
 ```
@@ -138,7 +138,7 @@ All panes use background threading with `GLib.idle_add()` for async CLI operatio
 # Build .deb package
 bash build.sh
 
-# Output: nordgui_0.5.0_all.deb (20KB)
+# Output: nordgui_0.8.0_all.deb (20KB)
 ```
 
 ## Development
