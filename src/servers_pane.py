@@ -233,10 +233,41 @@ class ServersPane(Gtk.Box):
         self.select_countries_by_name(countries_to_select)
 
     def refresh_countries_display(self):
-        """Refresh country list based on search."""
+        """Refresh country list based on search.
+
+        When searching: show all countries, but only those with matching cities
+        When not searching: show all countries
+        """
         self.countries_listbox.remove_all()
-        for country in self.all_countries:
-            if self.search_text in country.lower():
+
+        if self.search_text:
+            # Search mode: show only countries that have cities matching the search
+            matching_cities = [city for city in self.all_cities if self.search_text in city.lower()]
+            countries_with_matches = set()
+            for city in matching_cities:
+                if city in self.city_to_countries:
+                    countries_with_matches.update(self.city_to_countries[city])
+
+            # If cities matched, show those countries. Otherwise fall back to country name matching
+            if countries_with_matches:
+                for country in sorted(countries_with_matches):
+                    row = Gtk.ListBoxRow()
+                    label = Gtk.Label(label=country, xalign=0)
+                    label.set_hexpand(True)
+                    row.set_child(label)
+                    self.countries_listbox.append(row)
+            else:
+                # No cities matched, show countries matching search text
+                for country in self.all_countries:
+                    if self.search_text in country.lower():
+                        row = Gtk.ListBoxRow()
+                        label = Gtk.Label(label=country, xalign=0)
+                        label.set_hexpand(True)
+                        row.set_child(label)
+                        self.countries_listbox.append(row)
+        else:
+            # No search: show all countries
+            for country in self.all_countries:
                 row = Gtk.ListBoxRow()
                 label = Gtk.Label(label=country, xalign=0)
                 label.set_hexpand(True)
