@@ -65,7 +65,7 @@ class ServersPane(Gtk.Box):
         self.countries_listbox.set_selection_mode(Gtk.SelectionMode.SINGLE)
         self.countries_listbox.set_hexpand(True)
         self.countries_listbox.set_vexpand(True)
-        self.countries_listbox.connect("row-selected", self.on_country_selected)
+        self._country_selected_handler_id = self.countries_listbox.connect("row-selected", self.on_country_selected)
 
         countries_scrolled = Gtk.ScrolledWindow()
         countries_scrolled.set_child(self.countries_listbox)
@@ -306,7 +306,7 @@ class ServersPane(Gtk.Box):
                 self.cities_listbox.append(row)
 
     def select_countries_by_name(self, country_names):
-        """Select multiple countries in the listbox.
+        """Select multiple countries in the listbox without triggering row-selected signal.
 
         Args:
             country_names: List of country names to select
@@ -317,19 +317,26 @@ class ServersPane(Gtk.Box):
 
         country_names_lower = [name.lower() for name in country_names]
 
-        # Iterate through all rows in the listbox
-        row_index = 0
-        while True:
-            row = self.countries_listbox.get_row_at_index(row_index)
-            if not row:
-                break
+        # Block the row-selected signal to prevent on_country_selected from clearing search
+        self.countries_listbox.handler_block(self._country_selected_handler_id)
 
-            label = row.get_child()
-            if isinstance(label, Gtk.Label):
-                country = label.get_label().lower()
-                if country in country_names_lower:
-                    self.countries_listbox.select_row(row)
-            row_index += 1
+        try:
+            # Iterate through all rows in the listbox
+            row_index = 0
+            while True:
+                row = self.countries_listbox.get_row_at_index(row_index)
+                if not row:
+                    break
+
+                label = row.get_child()
+                if isinstance(label, Gtk.Label):
+                    country = label.get_label().lower()
+                    if country in country_names_lower:
+                        self.countries_listbox.select_row(row)
+                row_index += 1
+        finally:
+            # Always restore signal handling
+            self.countries_listbox.handler_unblock(self._country_selected_handler_id)
 
     def get_countries_for_search_results(self):
         """Get list of countries that should be selected based on current search.
