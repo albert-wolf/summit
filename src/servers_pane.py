@@ -212,12 +212,13 @@ class ServersPane(Gtk.Box):
 
                 if city_to_countries != self.city_to_countries:
                     self.city_to_countries = city_to_countries
-                    GLib.idle_add(self.save_city_to_countries_to_cache, city_to_countries)
+                    # Save directly on background thread (no GTK widgets touched)
+                    self.save_city_to_countries_to_cache(city_to_countries)
                     print("[INFO] City cache updated with fresh data")
                 else:
                     print("[INFO] City cache is up-to-date")
 
-                # Refresh search display once cities are loaded (handles search-before-load case)
+                # Refresh search display on main thread once cities are loaded
                 if self.search_text:
                     GLib.idle_add(self.refresh_countries_display)
                     GLib.idle_add(self.refresh_cities_display)
