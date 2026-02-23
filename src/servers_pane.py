@@ -127,6 +127,8 @@ class ServersPane(Gtk.Box):
         cached_mapping = self.load_city_to_countries_from_cache()
         if cached_mapping:
             self.city_to_countries = cached_mapping
+            # Also pre-populate all_cities from cache keys so search works immediately
+            self.all_cities = sorted(cached_mapping.keys())
         # Then load fresh cities in background (will update cache if changed)
 
         # Load countries and all cities in background
