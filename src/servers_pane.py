@@ -123,6 +123,12 @@ class ServersPane(Gtk.Box):
 
         self.append(button_box)
 
+        # Try to load cached city_to_countries for instant startup
+        cached_mapping = self.load_city_to_countries_from_cache()
+        if cached_mapping:
+            self.city_to_countries = cached_mapping
+        # Then load fresh cities in background (will update cache if changed)
+
         # Load countries and all cities in background
         self.load_countries()
         self.load_all_cities()
@@ -201,6 +207,8 @@ class ServersPane(Gtk.Box):
 
                 self.all_cities = sorted(list(all_cities))
                 self.city_to_countries = city_to_countries
+                # Save to cache for fast startup next time
+                GLib.idle_add(self.save_city_to_countries_to_cache, city_to_countries)
             except Exception as e:
                 print(f"[ERROR] Failed to load all cities: {e}")
 
@@ -288,6 +296,51 @@ class ServersPane(Gtk.Box):
         self.all_cities = cities
         self.refresh_cities_display()
         return False
+
+    def load_city_to_countries_from_cache(self):
+        """Load city_to_countries mapping from cache file."""
+        import json
+        import os
+
+        cache_path = os.path.expanduser("~/.config/summit/server_cache.json")
+
+        if not os.path.exists(cache_path):
+            return None
+
+        try:
+            with open(cache_path, 'r') as f:
+                data = json.load(f)
+                if data.get("version") == 1:
+                    return data.get("city_to_countries", {})
+        except Exception as e:
+            print(f"[WARNING] Failed to load cache: {e}")
+
+        return None
+
+    def save_city_to_countries_to_cache(self, city_to_countries):
+        """Save city_to_countries mapping to cache file."""
+        import json
+        import os
+        from datetime import datetime
+
+        cache_path = os.path.expanduser("~/.config/summit/server_cache.json")
+        cache_dir = os.path.dirname(cache_path)
+
+        # Ensure directory exists
+        if not os.path.exists(cache_dir):
+            os.makedirs(cache_dir, exist_ok=True)
+
+        cache_data = {
+            "version": 1,
+            "city_to_countries": city_to_countries,
+            "last_updated": datetime.utcnow().isoformat() + "Z"
+        }
+
+        try:
+            with open(cache_path, 'w') as f:
+                json.dump(cache_data, f, indent=2)
+        except Exception as e:
+            print(f"[WARNING] Failed to save cache: {e}")
 
     def on_city_selected(self, listbox, row):
         """Update selected city."""
