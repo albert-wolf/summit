@@ -1,20 +1,20 @@
 import gi
 gi.require_version('Gtk', '4.0')
 from gi.repository import Gtk, GLib
-from summit_manager import NordManager
+from summit_manager import SummitManager
 
 
 class SettingsPane(Gtk.Box):
     """Tab 3: NordVPN Settings"""
 
-    def __init__(self, nord: NordManager):
+    def __init__(self, manager: SummitManager):
         super().__init__(orientation=Gtk.Orientation.VERTICAL, spacing=12)
         self.set_margin_top(12)
         self.set_margin_bottom(12)
         self.set_margin_start(12)
         self.set_margin_end(12)
 
-        self.nord = nord
+        self.manager = nord
         self.settings = {}
         self.switches = {}
 
@@ -170,12 +170,12 @@ class SettingsPane(Gtk.Box):
         """Load settings. If synchronous=True, load immediately; else load in background."""
         if synchronous:
             # Synchronous load - called before window shows
-            settings = self.nord.get_settings()
+            settings = self.manager.get_settings()
             self.apply_settings_to_ui(settings)
         else:
             # Asynchronous load - for updates after window is shown
             def worker():
-                settings = self.nord.get_settings()
+                settings = self.manager.get_settings()
                 GLib.idle_add(self.apply_settings_to_ui, settings)
 
             import threading
@@ -239,7 +239,7 @@ class SettingsPane(Gtk.Box):
         value = "enabled" if active else "disabled"
 
         def worker():
-            success, message = self.nord.set_setting(setting_key, value)
+            success, message = self.manager.set_setting(setting_key, value)
             GLib.idle_add(self.on_setting_done, success, switch)
 
         import threading
@@ -254,7 +254,7 @@ class SettingsPane(Gtk.Box):
         technology = "NORDLYNX" if selected == 0 else "OPENVPN"
 
         def worker():
-            success, message = self.nord.set_setting("Technology", technology)
+            success, message = self.manager.set_setting("Technology", technology)
             GLib.idle_add(self.on_technology_done, success, dropdown, selected, technology)
 
         import threading
@@ -269,7 +269,7 @@ class SettingsPane(Gtk.Box):
         protocol = "TCP" if selected == 0 else "UDP"
 
         def worker():
-            success, message = self.nord.set_setting("Protocol", protocol)
+            success, message = self.manager.set_setting("Protocol", protocol)
             GLib.idle_add(self.on_dropdown_done, success, dropdown, selected)
 
         import threading
@@ -319,7 +319,7 @@ class SettingsPane(Gtk.Box):
                 cmd.append(country)
             if city and city != "Select City":
                 cmd.append(city)
-            self.nord.run_command(cmd)
+            self.manager.run_command(cmd)
 
         import threading
         threading.Thread(target=worker, daemon=True).start()
@@ -337,7 +337,7 @@ class SettingsPane(Gtk.Box):
             self._apply_autoconnect()
         else:
             def worker():
-                self.nord.run_command(["settings", "autoconnect", "off"])
+                self.manager.run_command(["settings", "autoconnect", "off"])
             import threading
             threading.Thread(target=worker, daemon=True).start()
 
@@ -353,7 +353,7 @@ class SettingsPane(Gtk.Box):
         # Populate cities for selected country in background
         def worker():
             # country is already in underscore format from get_countries() (e.g., "United_States")
-            cities = self.nord.get_cities(country)
+            cities = self.manager.get_cities(country)
             GLib.idle_add(self.populate_autoconnect_cities, cities)
 
         import threading

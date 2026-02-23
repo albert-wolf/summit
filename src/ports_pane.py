@@ -1,20 +1,20 @@
 import gi
 gi.require_version('Gtk', '4.0')
 from gi.repository import Gtk, GLib
-from summit_manager import NordManager
+from summit_manager import SummitManager
 
 
 class PortsPane(Gtk.Box):
     """Tab 4: Allowlisted Port Management"""
 
-    def __init__(self, nord: NordManager):
+    def __init__(self, manager: SummitManager):
         super().__init__(orientation=Gtk.Orientation.VERTICAL, spacing=12)
         self.set_margin_top(12)
         self.set_margin_bottom(12)
         self.set_margin_start(12)
         self.set_margin_end(12)
 
-        self.nord = nord
+        self.manager = nord
         self.ports = []
 
         # Title
@@ -65,7 +65,7 @@ class PortsPane(Gtk.Box):
     def load_ports(self):
         """Load ports list in background thread."""
         def worker():
-            settings = self.nord.get_settings()
+            settings = self.manager.get_settings()
             ports = settings.get("allowlisted_ports", [])
             GLib.idle_add(self.on_ports_loaded, ports)
 
@@ -115,7 +115,7 @@ class PortsPane(Gtk.Box):
 
         def worker():
             # Remove with no protocol specified - removes all protocols for this port
-            success, message = self.nord.remove_port(int(port_num), None)
+            success, message = self.manager.remove_port(int(port_num), None)
             GLib.idle_add(self.on_port_operation_done, success)
 
         import threading
@@ -140,7 +140,7 @@ class PortsPane(Gtk.Box):
         button.set_label("Adding...")
 
         def worker():
-            success, message = self.nord.add_port(port_num, protocol)
+            success, message = self.manager.add_port(port_num, protocol)
             GLib.idle_add(self.on_port_operation_done, success)
 
         import threading

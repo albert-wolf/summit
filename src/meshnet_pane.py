@@ -1,20 +1,20 @@
 import gi
 gi.require_version('Gtk', '4.0')
 from gi.repository import Gtk, GLib
-from summit_manager import NordManager
+from summit_manager import SummitManager
 
 
 class MeshnetPane(Gtk.Box):
     """Tab 5: Meshnet Management with 3-pane layout"""
 
-    def __init__(self, nord: NordManager):
+    def __init__(self, manager: SummitManager):
         super().__init__(orientation=Gtk.Orientation.VERTICAL, spacing=12)
         self.set_margin_top(12)
         self.set_margin_bottom(12)
         self.set_margin_start(12)
         self.set_margin_end(12)
 
-        self.nord = nord
+        self.manager = nord
         self.meshnet_enabled = False
         self.initializing = True
 
@@ -86,11 +86,11 @@ class MeshnetPane(Gtk.Box):
 
     def load_meshnet_state(self):
         """Load meshnet state synchronously."""
-        settings = self.nord.get_settings()
+        settings = self.manager.get_settings()
         meshnet_enabled = settings.get("Meshnet", "disabled").lower() == "enabled"
 
         if meshnet_enabled:
-            enabled, peers = self.nord.get_meshnet_peers()
+            enabled, peers = self.manager.get_meshnet_peers()
             self.apply_meshnet_state(enabled, peers)
         else:
             self.apply_meshnet_state(False, [])
@@ -105,11 +105,11 @@ class MeshnetPane(Gtk.Box):
                 # Wait a bit to let UI settle after window appears
                 time.sleep(0.3)
 
-                settings = self.nord.get_settings()
+                settings = self.manager.get_settings()
                 meshnet_enabled = settings.get("Meshnet", "disabled").lower() == "enabled"
 
                 if meshnet_enabled:
-                    enabled, peers = self.nord.get_meshnet_peers()
+                    enabled, peers = self.manager.get_meshnet_peers()
                 else:
                     enabled, peers = False, []
 
@@ -144,7 +144,7 @@ class MeshnetPane(Gtk.Box):
     def populate_meshnet_data(self, peers):
         """Populate the 3 panes with device and peer data."""
         # Update This Device section
-        device_info = self.nord.get_this_device_info()
+        device_info = self.manager.get_this_device_info()
         local_device_name = None
 
         if device_info:
@@ -230,7 +230,7 @@ class MeshnetPane(Gtk.Box):
         switch.set_sensitive(False)
 
         def worker():
-            success, message = self.nord.set_meshnet(enabled)
+            success, message = self.manager.set_meshnet(enabled)
             GLib.idle_add(self.on_meshnet_done, success, enabled, switch)
 
         import threading
@@ -262,7 +262,7 @@ class MeshnetPane(Gtk.Box):
     def load_meshnet_peers(self):
         """Load peers when meshnet is enabled."""
         def worker():
-            enabled, peers = self.nord.get_meshnet_peers()
+            enabled, peers = self.manager.get_meshnet_peers()
             GLib.idle_add(self.populate_meshnet_data, peers)
 
         import threading

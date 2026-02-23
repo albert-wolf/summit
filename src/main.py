@@ -21,7 +21,7 @@ try:
 except (ValueError, ImportError):
     HAS_ADWAITA = False
 
-from summit_manager import NordManager
+from summit_manager import SummitManager
 from status_pane import StatusPane
 from servers_pane import ServersPane
 from settings_pane import SettingsPane
@@ -39,7 +39,7 @@ class SummitApp(Gtk.Application):
             application_id="io.github.summit",
             flags=Gio.ApplicationFlags.NON_UNIQUE
         )
-        self.nord = NordManager()
+        self.manager = SummitManager()
         self.window = None
         self.config = {}
         self.poll_timer = None
@@ -72,7 +72,7 @@ class SummitApp(Gtk.Application):
                 self.load_config()
 
                 # Check nordvpn installed
-                if not self.nord.is_installed():
+                if not self.manager.is_installed():
                     dialog = Gtk.AlertDialog()
                     dialog.set_message("NordVPN Not Installed")
                     dialog.set_detail_text("Please install NordVPN first:\nsudo apt install nordvpn")
@@ -92,7 +92,7 @@ class SummitApp(Gtk.Application):
     def check_login_status(self):
         """Check if logged in asynchronously, show dialog if not (runs via idle_add)."""
         def worker():
-            is_logged_in = self.nord.is_logged_in()
+            is_logged_in = self.manager.is_logged_in()
             GLib.idle_add(self.show_login_dialog_if_needed, is_logged_in)
 
         import threading
@@ -349,7 +349,7 @@ class SummitApp(Gtk.Application):
 
         # Tab 1: Status Pane
         self.status_pane = StatusPane(
-            self.nord,
+            self.manager,
             on_status_change=self.on_status_change,
             on_connect_click=self.switch_to_servers_tab
         )
@@ -357,12 +357,12 @@ class SummitApp(Gtk.Application):
         self.stack.add_named(self.status_pane, "status")
 
         # Tab 2: Servers Pane
-        self.servers_pane = ServersPane(self.nord)
+        self.servers_pane = ServersPane(self.manager)
         self.servers_pane.set_app_ref(self)
         self.stack.add_named(self.servers_pane, "servers")
 
         # Tab 3: Settings Pane
-        self.settings_pane = SettingsPane(self.nord)
+        self.settings_pane = SettingsPane(self.manager)
         self.stack.add_named(self.settings_pane, "settings")
 
         # Load auto-connect state
@@ -370,7 +370,7 @@ class SummitApp(Gtk.Application):
 
         # Populate auto-connect countries in background
         def load_autoconnect_data():
-            countries = self.nord.get_countries()
+            countries = self.manager.get_countries()
             saved_country = self.config.get("autoconnect_country", "")
             saved_city = self.config.get("autoconnect_city", "")
 
@@ -396,7 +396,7 @@ class SummitApp(Gtk.Application):
                     )
 
                     # Now load cities for this country
-                    cities = self.nord.get_cities(saved_country)
+                    cities = self.manager.get_cities(saved_country)
                     self.settings_pane.autoconnect_city_combo.remove_all()
                     self.settings_pane.autoconnect_city_combo.append("", "Select City")
                     for city in cities:
@@ -412,11 +412,11 @@ class SummitApp(Gtk.Application):
         thread.start()
 
         # Tab 4: Ports Pane
-        self.ports_pane = PortsPane(self.nord)
+        self.ports_pane = PortsPane(self.manager)
         self.stack.add_named(self.ports_pane, "ports")
 
         # Tab 5: Meshnet Pane
-        self.meshnet_pane = MeshnetPane(self.nord)
+        self.meshnet_pane = MeshnetPane(self.manager)
         self.stack.add_named(self.meshnet_pane, "meshnet")
 
         # HeaderBar with tab buttons - set as window titlebar
@@ -432,7 +432,7 @@ class SummitApp(Gtk.Application):
         self.content_paned.set_position(550)
 
         # Recent Connections Pane (created but only added to paned when on Status tab)
-        self.recent_pane = RecentPane(self.nord)
+        self.recent_pane = RecentPane(self.manager)
         self.recent_pane.set_app_ref(self)
         self.recent_pane.refresh_favorites_display()
 
@@ -655,7 +655,7 @@ class SummitApp(Gtk.Application):
         def worker():
             try:
                 # Fetch status once and share between both panes
-                status = self.nord.get_status()
+                status = self.manager.get_status()
 
                 # Update both panes with the same status result
                 if hasattr(self, 'status_pane'):

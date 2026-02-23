@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Tuple, List, Dict, Optional
 
 
-class NordManager:
+class SummitManager:
     """NordVPN CLI wrapper with output parsing. No GTK dependencies."""
 
     def __init__(self):
