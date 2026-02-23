@@ -65,13 +65,13 @@ class ServersPane(Gtk.Box):
         self.countries_listbox.set_selection_mode(Gtk.SelectionMode.SINGLE)
         self.countries_listbox.set_hexpand(True)
         self.countries_listbox.set_vexpand(True)
-        self.countries_listbox.connect("row-selected", self.on_country_selected)
+        self._country_selected_handler_id = self.countries_listbox.connect("row-selected", self.on_country_selected)
 
-        countries_scrolled = Gtk.ScrolledWindow()
-        countries_scrolled.set_child(self.countries_listbox)
-        countries_scrolled.set_vexpand(True)
-        countries_scrolled.set_hexpand(True)
-        countries_box.append(countries_scrolled)
+        self.countries_scrolled = Gtk.ScrolledWindow()
+        self.countries_scrolled.set_child(self.countries_listbox)
+        self.countries_scrolled.set_vexpand(True)
+        self.countries_scrolled.set_hexpand(True)
+        countries_box.append(self.countries_scrolled)
 
         self.paned.set_start_child(countries_box)
 
@@ -127,6 +127,8 @@ class ServersPane(Gtk.Box):
         cached_mapping = self.load_city_to_countries_from_cache()
         if cached_mapping:
             self.city_to_countries = cached_mapping
+            # Also pre-populate all_cities from cache keys so search works immediately
+            self.all_cities = sorted(cached_mapping.keys())
         # Then load fresh cities in background (will update cache if changed)
 
         # Load countries and all cities in background
@@ -205,16 +207,22 @@ class ServersPane(Gtk.Box):
                         except Exception as e:
                             print(f"[WARNING] Error loading cities for {futures[future]}: {e}")
 
-                # Check if data changed
+                # Always update all_cities and mapping from fresh fetch
+                self.all_cities = sorted(list(all_cities))
+
                 if city_to_countries != self.city_to_countries:
-                    # Data changed, update and cache silently
-                    self.all_cities = sorted(list(all_cities))
                     self.city_to_countries = city_to_countries
-                    # Save updated cache
-                    GLib.idle_add(self.save_city_to_countries_to_cache, city_to_countries)
+                    # Save directly on background thread (no GTK widgets touched)
+                    self.save_city_to_countries_to_cache(city_to_countries)
                     print("[INFO] City cache updated with fresh data")
                 else:
                     print("[INFO] City cache is up-to-date")
+
+                # Refresh search display on main thread once cities are loaded
+                if self.search_text:
+                    GLib.idle_add(self.refresh_countries_display)
+                    GLib.idle_add(self.refresh_cities_display)
+                    GLib.idle_add(lambda: self.select_countries_by_name(self.get_countries_for_search_results()))
             except Exception as e:
                 print(f"[ERROR] Failed to load all cities: {e}")
 
@@ -225,23 +233,21 @@ class ServersPane(Gtk.Box):
     def on_search_changed(self, search_entry):
         """Filter countries and cities by search text."""
         self.search_text = search_entry.get_text().lower()
-        self.refresh_countries_display()
         self.refresh_cities_display()
 
-        # Auto-select countries based on search results
+        # Auto-highlight countries that contain matching cities (don't rebuild the list)
         countries_to_select = self.get_countries_for_search_results()
         self.select_countries_by_name(countries_to_select)
 
     def refresh_countries_display(self):
-        """Refresh country list based on search."""
+        """Always show all countries. Search does not filter this list."""
         self.countries_listbox.remove_all()
         for country in self.all_countries:
-            if self.search_text in country.lower():
-                row = Gtk.ListBoxRow()
-                label = Gtk.Label(label=country, xalign=0)
-                label.set_hexpand(True)
-                row.set_child(label)
-                self.countries_listbox.append(row)
+            row = Gtk.ListBoxRow()
+            label = Gtk.Label(label=country, xalign=0)
+            label.set_hexpand(True)
+            row.set_child(label)
+            self.countries_listbox.append(row)
 
     def refresh_cities_display(self):
         """Refresh city list based on search."""
@@ -267,7 +273,7 @@ class ServersPane(Gtk.Box):
                 self.cities_listbox.append(row)
 
     def select_countries_by_name(self, country_names):
-        """Select multiple countries in the listbox.
+        """Select multiple countries in the listbox without triggering row-selected signal.
 
         Args:
             country_names: List of country names to select
@@ -278,19 +284,37 @@ class ServersPane(Gtk.Box):
 
         country_names_lower = [name.lower() for name in country_names]
 
-        # Iterate through all rows in the listbox
-        row_index = 0
-        while True:
-            row = self.countries_listbox.get_row_at_index(row_index)
-            if not row:
-                break
+        # Block the row-selected signal to prevent on_country_selected from clearing search
+        self.countries_listbox.handler_block(self._country_selected_handler_id)
 
-            label = row.get_child()
-            if isinstance(label, Gtk.Label):
-                country = label.get_label().lower()
-                if country in country_names_lower:
-                    self.countries_listbox.select_row(row)
-            row_index += 1
+        first_match_row = None
+        try:
+            row_index = 0
+            while True:
+                row = self.countries_listbox.get_row_at_index(row_index)
+                if not row:
+                    break
+
+                label = row.get_child()
+                if isinstance(label, Gtk.Label):
+                    country = label.get_label().lower()
+                    if country in country_names_lower:
+                        self.countries_listbox.select_row(row)
+                        if first_match_row is None:
+                            first_match_row = row
+                row_index += 1
+        finally:
+            self.countries_listbox.handler_unblock(self._country_selected_handler_id)
+
+        # Scroll to first matched country so user can see the highlight (without stealing focus)
+        if first_match_row:
+            def scroll_to_row():
+                alloc = first_match_row.get_allocation()
+                vadj = self.countries_scrolled.get_vadjustment()
+                if alloc.height > 0:
+                    vadj.set_value(max(0, alloc.y - alloc.height))
+                return False
+            GLib.idle_add(scroll_to_row)
 
     def get_countries_for_search_results(self):
         """Get list of countries that should be selected based on current search.
@@ -403,11 +427,18 @@ class ServersPane(Gtk.Box):
             print(f"[WARNING] Failed to save cache: {e}")
 
     def on_city_selected(self, listbox, row):
-        """Update selected city."""
+        """Update selected city. In search mode, also derive the country from the mapping."""
         if row:
             city_label = row.get_child()
             self.selected_city = city_label.get_label()
             self.favorite_button.set_sensitive(True)
+            self.connect_btn.set_sensitive(True)
+
+            # In search mode, selected_country may not be set — derive it from the mapping
+            if self.search_text and not self.selected_country:
+                countries = self.city_to_countries.get(self.selected_city, [])
+                if len(countries) == 1:
+                    self.selected_country = countries[0]
         else:
             self.selected_city = None
             self.favorite_button.set_sensitive(False)
