@@ -67,11 +67,11 @@ class ServersPane(Gtk.Box):
         self.countries_listbox.set_vexpand(True)
         self._country_selected_handler_id = self.countries_listbox.connect("row-selected", self.on_country_selected)
 
-        countries_scrolled = Gtk.ScrolledWindow()
-        countries_scrolled.set_child(self.countries_listbox)
-        countries_scrolled.set_vexpand(True)
-        countries_scrolled.set_hexpand(True)
-        countries_box.append(countries_scrolled)
+        self.countries_scrolled = Gtk.ScrolledWindow()
+        self.countries_scrolled.set_child(self.countries_listbox)
+        self.countries_scrolled.set_vexpand(True)
+        self.countries_scrolled.set_hexpand(True)
+        countries_box.append(self.countries_scrolled)
 
         self.paned.set_start_child(countries_box)
 
@@ -233,10 +233,9 @@ class ServersPane(Gtk.Box):
     def on_search_changed(self, search_entry):
         """Filter countries and cities by search text."""
         self.search_text = search_entry.get_text().lower()
-        self.refresh_countries_display()
         self.refresh_cities_display()
 
-        # Auto-select countries based on search results
+        # Auto-highlight countries that contain matching cities (don't rebuild the list)
         countries_to_select = self.get_countries_for_search_results()
         self.select_countries_by_name(countries_to_select)
 
@@ -307,9 +306,15 @@ class ServersPane(Gtk.Box):
         finally:
             self.countries_listbox.handler_unblock(self._country_selected_handler_id)
 
-        # Scroll to first matched country so user can see the highlight
+        # Scroll to first matched country so user can see the highlight (without stealing focus)
         if first_match_row:
-            GLib.idle_add(first_match_row.grab_focus)
+            def scroll_to_row():
+                alloc = first_match_row.get_allocation()
+                vadj = self.countries_scrolled.get_vadjustment()
+                if alloc.height > 0:
+                    vadj.set_value(max(0, alloc.y - alloc.height))
+                return False
+            GLib.idle_add(scroll_to_row)
 
     def get_countries_for_search_results(self):
         """Get list of countries that should be selected based on current search.
