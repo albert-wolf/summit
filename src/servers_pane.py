@@ -20,6 +20,7 @@ class ServersPane(Gtk.Box):
         self.search_text = ""
         self.all_countries = []
         self.all_cities = []
+        self.city_to_countries = {}  # Maps city name to list of countries
         self.app_ref = None
 
         # Search bar
@@ -178,6 +179,7 @@ class ServersPane(Gtk.Box):
 
                 countries = self.nord.get_countries()
                 all_cities = set()
+                city_to_countries = {}  # Build mapping: city -> list of countries
 
                 # Load cities in parallel (max 4 concurrent requests to avoid daemon socket saturation)
                 import concurrent.futures
@@ -185,12 +187,20 @@ class ServersPane(Gtk.Box):
                     futures = {executor.submit(self.nord.get_cities, country): country for country in countries}
                     for future in concurrent.futures.as_completed(futures):
                         try:
+                            country = futures[future]
                             cities = future.result()
                             all_cities.update(cities)
+
+                            # Build city_to_countries mapping
+                            for city in cities:
+                                if city not in city_to_countries:
+                                    city_to_countries[city] = []
+                                city_to_countries[city].append(country)
                         except Exception as e:
                             print(f"[WARNING] Error loading cities for {futures[future]}: {e}")
 
                 self.all_cities = sorted(list(all_cities))
+                self.city_to_countries = city_to_countries
             except Exception as e:
                 print(f"[ERROR] Failed to load all cities: {e}")
 
