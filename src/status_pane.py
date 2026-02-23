@@ -1,20 +1,20 @@
 import gi
 gi.require_version('Gtk', '4.0')
 from gi.repository import Gtk, GLib
-from summit_manager import NordManager
+from summit_manager import SummitManager
 
 
 class StatusPane(Gtk.Box):
     """Tab 1: VPN Status and Connection Controls"""
 
-    def __init__(self, nord: NordManager, on_status_change=None, on_connect_click=None):
+    def __init__(self, manager: SummitManager, on_status_change=None, on_connect_click=None):
         super().__init__(orientation=Gtk.Orientation.VERTICAL, spacing=12)
         self.set_margin_top(12)
         self.set_margin_bottom(12)
         self.set_margin_start(12)
         self.set_margin_end(12)
 
-        self.nord = nord
+        self.manager = nord
         self.on_status_change = on_status_change
         self.on_connect_click = on_connect_click
         self.current_status = None
@@ -135,7 +135,7 @@ class StatusPane(Gtk.Box):
 
     def update_status(self):
         """Update status display from summit_manager (synchronous version for manual updates)."""
-        status = self.nord.get_status()
+        status = self.manager.get_status()
         self.apply_status(status)
 
     def on_connect_clicked(self, button):
@@ -153,7 +153,7 @@ class StatusPane(Gtk.Box):
         button.set_label("Disconnecting...")
 
         def worker():
-            success, message = self.nord.disconnect()
+            success, message = self.manager.disconnect()
             GLib.idle_add(self.on_disconnect_done, success, message, button)
 
         import threading
@@ -178,7 +178,7 @@ class StatusPane(Gtk.Box):
         button.set_label("Reconnecting...")
 
         def worker():
-            success, message = self.nord.reconnect()
+            success, message = self.manager.reconnect()
             GLib.idle_add(self.on_reconnect_done, success, message, button)
 
         import threading

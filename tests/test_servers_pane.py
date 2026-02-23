@@ -28,8 +28,8 @@ class TestCityToCountriesMapping(unittest.TestCase):
         mock_exists.return_value = True
         mock_open.return_value.__enter__.return_value.read.return_value = json.dumps(cache_data)
 
-        mock_nord = Mock()
-        pane = ServersPane(mock_nord)
+        mock_manager = Mock()
+        pane = ServersPane(mock_manager)
 
         # Test loading
         result = pane.load_city_to_countries_from_cache()
@@ -41,8 +41,8 @@ class TestCityToCountriesMapping(unittest.TestCase):
     @patch('builtins.open', create=True)
     def test_save_city_to_countries_to_cache(self, mock_open):
         """Test saving city_to_countries to cache file."""
-        mock_nord = Mock()
-        pane = ServersPane(mock_nord)
+        mock_manager = Mock()
+        pane = ServersPane(mock_manager)
 
         test_mapping = {
             "New_York": ["United_States"],
@@ -56,8 +56,8 @@ class TestCityToCountriesMapping(unittest.TestCase):
 
     def test_search_priority_cities_before_countries(self):
         """Test that cities have priority over countries when both match search."""
-        mock_nord = Mock()
-        pane = ServersPane(mock_nord)
+        mock_manager = Mock()
+        pane = ServersPane(mock_manager)
 
         # Set up data where search text "York" could match city "New_York" and country "New_York_Land"
         pane.all_countries = ["United_States", "New_York_Land"]
@@ -78,10 +78,10 @@ class TestCityToCountriesMapping(unittest.TestCase):
 
     def test_search_city_returns_matching_countries(self):
         """Test that get_countries_for_search_results returns correct countries for city searches."""
-        mock_nord = Mock()
-        mock_nord.get_countries.return_value = ["United_States", "Canada", "United_Kingdom"]
+        mock_manager = Mock()
+        mock_manager.get_countries.return_value = ["United_States", "Canada", "United_Kingdom"]
 
-        pane = ServersPane(mock_nord)
+        pane = ServersPane(mock_manager)
 
         # Manually set up data
         pane.all_countries = ["United_States", "Canada", "United_Kingdom"]
@@ -118,16 +118,16 @@ class TestCityToCountriesMapping(unittest.TestCase):
 
     def test_build_city_to_countries_mapping(self):
         """Test that city_to_countries dict maps cities to their countries correctly."""
-        # Mock NordManager
-        mock_nord = Mock()
-        mock_nord.get_countries.return_value = ["United_States", "Canada"]
-        mock_nord.get_cities.side_effect = lambda country: {
+        # Mock SummitManager
+        mock_manager = Mock()
+        mock_manager.get_countries.return_value = ["United_States", "Canada"]
+        mock_manager.get_cities.side_effect = lambda country: {
             "United_States": ["New_York", "Los_Angeles"],
             "Canada": ["Toronto", "Vancouver"]
         }[country]
 
         # Create pane (will trigger city loading)
-        pane = ServersPane(mock_nord)
+        pane = ServersPane(mock_manager)
 
         # Wait for background thread to complete (0.5s sleep + execution time)
         import time

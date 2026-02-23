@@ -22,7 +22,7 @@ An unofficial community-developed GTK4 graphical interface for the NordVPN comma
   - **Meshnet**: Enable/disable meshnet and view connected peers
 
 - **Real-Time Polling**: Status updates every 2 seconds
-- **Configuration Persistence**: Window size, position, and last-selected tab saved to `~/.config/nordgui/config.json`
+- **Configuration Persistence**: Window size, position, and last-selected tab saved to `~/.config/summit/config.json`
 - **Professional Dark Theme**: Custom GTK4 CSS with Nord-inspired colors
 - **Async Operations**: All CLI commands run in background threads for responsive UI
 - **Error Handling**: Graceful fallback for missing dependencies and NordVPN login requirements
@@ -125,7 +125,7 @@ All panes use background threading with `GLib.idle_add()` for async CLI operatio
 
 ### Main Application Flow
 1. Check `nordvpn` installed → Show alert and exit if not
-2. Load config from `~/.config/nordgui/config.json`
+2. Load config from `~/.config/summit/config.json`
 3. Build window with 5 tabs
 4. Check login status → Show notification if not logged in
 5. Start 2-second polling loop to update status
