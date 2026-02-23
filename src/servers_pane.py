@@ -212,6 +212,11 @@ class ServersPane(Gtk.Box):
                     self.city_to_countries = city_to_countries
                     # Save updated cache
                     GLib.idle_add(self.save_city_to_countries_to_cache, city_to_countries)
+                    # Refresh search display if search is active (ensures newly loaded cities appear in search)
+                    if self.search_text:
+                        GLib.idle_add(self.refresh_countries_display)
+                        GLib.idle_add(self.refresh_cities_display)
+                        GLib.idle_add(lambda: self.select_countries_by_name(self.get_countries_for_search_results()))
                     print("[INFO] City cache updated with fresh data")
                 else:
                     print("[INFO] City cache is up-to-date")
