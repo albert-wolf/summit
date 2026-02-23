@@ -222,6 +222,10 @@ class ServersPane(Gtk.Box):
         self.refresh_countries_display()
         self.refresh_cities_display()
 
+        # Auto-select countries based on search results
+        countries_to_select = self.get_countries_for_search_results()
+        self.select_countries_by_name(countries_to_select)
+
     def refresh_countries_display(self):
         """Refresh country list based on search."""
         self.countries_listbox.remove_all()
@@ -255,6 +259,56 @@ class ServersPane(Gtk.Box):
                 label.set_hexpand(True)
                 row.set_child(label)
                 self.cities_listbox.append(row)
+
+    def select_countries_by_name(self, country_names):
+        """Select multiple countries in the listbox.
+
+        Args:
+            country_names: List of country names to select
+        """
+        if not country_names:
+            self.countries_listbox.unselect_all()
+            return
+
+        country_names_lower = [name.lower() for name in country_names]
+
+        # Iterate through all rows in the listbox
+        row_index = 0
+        while True:
+            row = self.countries_listbox.get_row_at_index(row_index)
+            if not row:
+                break
+
+            label = row.get_child()
+            if isinstance(label, Gtk.Label):
+                country = label.get_label().lower()
+                if country in country_names_lower:
+                    self.countries_listbox.select_row(row)
+            row_index += 1
+
+    def get_countries_for_search_results(self):
+        """Get list of countries that should be selected based on current search.
+
+        Returns:
+            List of country names to auto-select
+        """
+        if not self.search_text:
+            return []
+
+        # Step 1: Find matching cities
+        matching_cities = [city for city in self.all_cities if self.search_text in city.lower()]
+
+        if matching_cities:
+            # Step 2: Extract countries for matching cities
+            countries = set()
+            for city in matching_cities:
+                if city in self.city_to_countries:
+                    countries.update(self.city_to_countries[city])
+            return sorted(list(countries))
+        else:
+            # Step 3: If no cities match, find matching countries
+            matching_countries = [country for country in self.all_countries if self.search_text in country.lower()]
+            return matching_countries
 
     def on_countries_loaded(self, countries):
         """Populate countries listbox."""
