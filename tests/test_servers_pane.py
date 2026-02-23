@@ -54,6 +54,68 @@ class TestCityToCountriesMapping(unittest.TestCase):
         # Verify file was opened for writing
         mock_open.assert_called_once()
 
+    def test_search_priority_cities_before_countries(self):
+        """Test that cities have priority over countries when both match search."""
+        mock_nord = Mock()
+        pane = ServersPane(mock_nord)
+
+        # Set up data where search text "York" could match city "New_York" and country "New_York_Land"
+        pane.all_countries = ["United_States", "New_York_Land"]
+        pane.all_cities = ["New_York", "Toronto"]
+        pane.city_to_countries = {
+            "New_York": ["United_States"],
+            "Toronto": ["Canada"]
+        }
+
+        # Search for "york" - should prioritize city "New_York" and return ["United_States"]
+        # NOT the country "New_York_Land"
+        pane.search_text = "york"
+        result = pane.get_countries_for_search_results()
+        # Should return United_States (country that has New_York city)
+        assert "United_States" in result, f"Expected United_States in {result}"
+        # Should NOT prioritize New_York_Land unless it's the only match
+        assert result == ["United_States"], f"Expected ['United_States'] but got {result}"
+
+    def test_search_city_returns_matching_countries(self):
+        """Test that get_countries_for_search_results returns correct countries for city searches."""
+        mock_nord = Mock()
+        mock_nord.get_countries.return_value = ["United_States", "Canada", "United_Kingdom"]
+
+        pane = ServersPane(mock_nord)
+
+        # Manually set up data
+        pane.all_countries = ["United_States", "Canada", "United_Kingdom"]
+        pane.all_cities = ["New_York", "Los_Angeles", "Toronto", "Vancouver", "London"]
+        pane.city_to_countries = {
+            "New_York": ["United_States"],
+            "Los_Angeles": ["United_States"],
+            "Toronto": ["Canada"],
+            "Vancouver": ["Canada"],
+            "London": ["United_Kingdom"]
+        }
+
+        # Test 1: Search for city "New" should return ["United_States"]
+        pane.search_text = "new"
+        result = pane.get_countries_for_search_results()
+        assert result == ["United_States"], f"Expected ['United_States'] but got {result}"
+
+        # Test 2: Search for city "Toronto" should return ["Canada"]
+        pane.search_text = "toronto"
+        result = pane.get_countries_for_search_results()
+        assert result == ["Canada"], f"Expected ['Canada'] but got {result}"
+
+        # Test 3: Search for country "United" should return ["United_Kingdom", "United_States"]
+        # (priority: no cities match, so fall back to country names)
+        pane.search_text = "united"
+        result = pane.get_countries_for_search_results()
+        expected = ["United_Kingdom", "United_States"]
+        assert sorted(result) == sorted(expected), f"Expected {expected} but got {result}"
+
+        # Test 4: Search for "Canada" as country should return ["Canada"]
+        pane.search_text = "canada"
+        result = pane.get_countries_for_search_results()
+        assert result == ["Canada"], f"Expected ['Canada'] but got {result}"
+
     def test_build_city_to_countries_mapping(self):
         """Test that city_to_countries dict maps cities to their countries correctly."""
         # Mock NordManager
