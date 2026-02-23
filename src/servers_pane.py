@@ -1,20 +1,20 @@
 import gi
 gi.require_version('Gtk', '4.0')
 from gi.repository import Gtk, GLib
-from summit_manager import NordManager
+from summit_manager import SummitManager
 
 
 class ServersPane(Gtk.Box):
     """Tab 2: Country and City Selection"""
 
-    def __init__(self, nord: NordManager):
+    def __init__(self, manager: SummitManager):
         super().__init__(orientation=Gtk.Orientation.VERTICAL, spacing=12)
         self.set_margin_top(12)
         self.set_margin_bottom(12)
         self.set_margin_start(12)
         self.set_margin_end(12)
 
-        self.nord = nord
+        self.manager = nord
         self.selected_country = None
         self.selected_city = None
         self.search_text = ""
@@ -170,7 +170,7 @@ class ServersPane(Gtk.Box):
     def load_countries(self):
         """Load countries list in background thread."""
         def worker():
-            countries = self.nord.get_countries()
+            countries = self.manager.get_countries()
             GLib.idle_add(self.on_countries_loaded, countries)
 
         import threading
@@ -185,14 +185,14 @@ class ServersPane(Gtk.Box):
                 # Wait a bit to let UI settle after window appears
                 time.sleep(0.5)
 
-                countries = self.nord.get_countries()
+                countries = self.manager.get_countries()
                 all_cities = set()
                 city_to_countries = {}  # Build mapping: city -> list of countries
 
                 # Load cities in parallel (max 4 concurrent requests to avoid daemon socket saturation)
                 import concurrent.futures
                 with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
-                    futures = {executor.submit(self.nord.get_cities, country): country for country in countries}
+                    futures = {executor.submit(self.manager.get_cities, country): country for country in countries}
                     for future in concurrent.futures.as_completed(futures):
                         try:
                             country = futures[future]
@@ -368,7 +368,7 @@ class ServersPane(Gtk.Box):
     def load_cities(self, country):
         """Load cities for selected country."""
         def worker():
-            cities = self.nord.get_cities(country)
+            cities = self.manager.get_cities(country)
             GLib.idle_add(self.on_cities_loaded, cities)
 
         import threading
@@ -456,7 +456,7 @@ class ServersPane(Gtk.Box):
         self.connect_btn.set_label("Connecting...")
 
         def worker():
-            success, message = self.nord.connect(country, city)
+            success, message = self.manager.connect(country, city)
             GLib.idle_add(self.on_connect_done, success, message, self.connect_btn)
 
         import threading

@@ -1,14 +1,14 @@
 import gi
 gi.require_version('Gtk', '4.0')
 from gi.repository import Gtk, GLib
-from summit_manager import NordManager
+from summit_manager import SummitManager
 from datetime import datetime
 
 
 class RecentPane(Gtk.Box):
     """Sidebar showing recent connection history with click-to-connect"""
 
-    def __init__(self, nord: NordManager):
+    def __init__(self, manager: SummitManager):
         super().__init__(orientation=Gtk.Orientation.VERTICAL, spacing=8)
         self.set_margin_top(12)
         self.set_margin_bottom(12)
@@ -16,7 +16,7 @@ class RecentPane(Gtk.Box):
         self.set_margin_end(12)
         self.set_size_request(250, -1)
 
-        self.nord = nord
+        self.manager = nord
         self.connection_history = []
         self.last_server = None  # Track last connected server to detect changes
         self.app_ref = None
@@ -146,9 +146,9 @@ class RecentPane(Gtk.Box):
         row.set_sensitive(False)
 
         def worker():
-            success, message = self.nord.connect(country, city)
+            success, message = self.manager.connect(country, city)
             if success:
-                self.nord.clear_cache()
+                self.manager.clear_cache()
             GLib.idle_add(self.on_connect_done, success, row, message)
 
         import threading
@@ -194,7 +194,7 @@ class RecentPane(Gtk.Box):
 
     def update_status(self):
         """Update status display from summit_manager (synchronous version for manual updates)."""
-        status = self.nord.get_status()
+        status = self.manager.get_status()
         self.apply_status(status)
 
     def add_history_entry(self, display_text, country, city, server):
@@ -282,10 +282,10 @@ class RecentPane(Gtk.Box):
 
         def worker():
             # Connect to the saved country and city
-            success, message = self.nord.connect(country, city)
+            success, message = self.manager.connect(country, city)
             # Clear cache so next status update gets fresh data
             if success:
-                self.nord.clear_cache()
+                self.manager.clear_cache()
             GLib.idle_add(self.on_connect_done, success, row, message)
 
         import threading
