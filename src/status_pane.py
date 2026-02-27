@@ -14,7 +14,7 @@ class StatusPane(Gtk.Box):
         self.set_margin_start(12)
         self.set_margin_end(12)
 
-        self.manager = nord
+        self.manager = manager
         self.on_status_change = on_status_change
         self.on_connect_click = on_connect_click
         self.current_status = None

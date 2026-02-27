@@ -207,7 +207,6 @@ class SummitApp(Gtk.Application):
             "window_height": 650,
             "last_country": "United_States",
             "last_city": "Saint_Louis",
-            "active_tab": 0,
             "poll_interval_ms": 2000,
             "autoconnect_enabled": False,
             "autoconnect_country": "",
@@ -233,11 +232,6 @@ class SummitApp(Gtk.Application):
         if self.window:
             self.config["window_width"] = self.window.get_width()
             self.config["window_height"] = self.window.get_height()
-            if hasattr(self, 'stack'):
-                # Convert tab name back to index
-                tab_names = ["status", "servers", "settings", "ports", "meshnet"]
-                active_name = self.stack.get_visible_child_name()
-                self.config["active_tab"] = tab_names.index(active_name) if active_name in tab_names else 0
 
         # Save auto-connect settings
         if hasattr(self, 'settings_pane'):
@@ -436,10 +430,8 @@ class SummitApp(Gtk.Application):
         self.recent_pane.set_app_ref(self)
         self.recent_pane.refresh_favorites_display()
 
-        # Set initial page based on config
-        tab_map = ["status", "servers", "settings", "ports", "meshnet"]
-        initial_tab = tab_map[self.config.get("active_tab", 0)]
-        self.stack.set_visible_child_name(initial_tab)
+        # Always start on Status tab for consistency and muscle memory
+        self.stack.set_visible_child_name("status")
 
         self.content_paned.set_start_child(self.stack)
 
@@ -511,10 +503,8 @@ class SummitApp(Gtk.Application):
             tab_box.append(btn)
             self.tab_buttons[name] = btn
 
-        # Set initial button active
-        initial_tab = self.config.get("active_tab", 0)
-        initial_name = tabs[initial_tab][1]
-        self.tab_buttons[initial_name].set_active(True)
+        # Always set Status tab button as active
+        self.tab_buttons["status"].set_active(True)
 
         header.pack_start(tab_box)
 

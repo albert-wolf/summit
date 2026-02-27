@@ -31,5 +31,3 @@ env/
 
 # Git worktrees
 .worktrees/
-docs/plans/
-GEMINI.md
