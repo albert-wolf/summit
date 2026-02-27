@@ -503,10 +503,8 @@ class SummitApp(Gtk.Application):
             tab_box.append(btn)
             self.tab_buttons[name] = btn
 
-        # Set initial button active
-        initial_tab = self.config.get("active_tab", 0)
-        initial_name = tabs[initial_tab][1]
-        self.tab_buttons[initial_name].set_active(True)
+        # Always set Status tab button as active
+        self.tab_buttons["status"].set_active(True)
 
         header.pack_start(tab_box)
 
