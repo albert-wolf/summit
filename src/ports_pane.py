@@ -14,7 +14,7 @@ class PortsPane(Gtk.Box):
         self.set_margin_start(12)
         self.set_margin_end(12)
 
-        self.manager = nord
+        self.manager = manager
         self.ports = []
 
         # Title

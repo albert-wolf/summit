@@ -14,7 +14,7 @@ class SettingsPane(Gtk.Box):
         self.set_margin_start(12)
         self.set_margin_end(12)
 
-        self.manager = nord
+        self.manager = manager
         self.settings = {}
         self.switches = {}
 
@@ -314,7 +314,7 @@ class SettingsPane(Gtk.Box):
         city = self.autoconnect_city_combo.get_active_text() or ""
 
         def worker():
-            cmd = ["settings", "autoconnect", "on"]
+            cmd = ["set", "autoconnect", "on"]
             if country and country != "Select Country":
                 cmd.append(country)
             if city and city != "Select City":
@@ -337,7 +337,7 @@ class SettingsPane(Gtk.Box):
             self._apply_autoconnect()
         else:
             def worker():
-                self.manager.run_command(["settings", "autoconnect", "off"])
+                self.manager.run_command(["set", "autoconnect", "off"])
             import threading
             threading.Thread(target=worker, daemon=True).start()
 

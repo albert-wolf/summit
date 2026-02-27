@@ -16,7 +16,7 @@ class RecentPane(Gtk.Box):
         self.set_margin_end(12)
         self.set_size_request(250, -1)
 
-        self.manager = nord
+        self.manager = manager
         self.connection_history = []
         self.last_server = None  # Track last connected server to detect changes
         self.app_ref = None
