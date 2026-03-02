@@ -13,14 +13,6 @@ gi.require_version('Gio', '2.0')
 from gi.repository import Gtk, Gio, GLib, Gdk
 from pathlib import Path
 
-# Try to import Adwaita for better theme detection
-try:
-    gi.require_version('Adw', '1')
-    from gi.repository import Adw
-    HAS_ADWAITA = True
-except (ValueError, ImportError):
-    HAS_ADWAITA = False
-
 from summit_manager import SummitManager
 from status_pane import StatusPane
 from servers_pane import ServersPane
@@ -56,16 +48,6 @@ class SummitApp(Gtk.Application):
     def do_startup(self, *args):
         """Called during startup. Create window here."""
         Gtk.Application.do_startup(self)
-        self.load_css()
-
-        # Listen for system theme changes
-        if HAS_ADWAITA:
-            try:
-                style_manager = Adw.StyleManager.get_default()
-                if style_manager:
-                    style_manager.connect("notify::dark", self.on_theme_changed)
-            except Exception:
-                pass
 
         if not self.window:
             try:
@@ -115,90 +97,6 @@ class SummitApp(Gtk.Application):
             self.window.present()
             GLib.idle_add(self.restore_window_state)
             GLib.idle_add(self.update_right_pane_visibility)  # Update visibility after window shows
-            # Reapply CSS after window is shown to override any theme defaults
-            GLib.idle_add(self.reapply_css)
-
-    def load_css(self):
-        """Load CSS styling."""
-        debug_log = Path("/tmp/summit_css_debug.log")
-        try:
-            with open(debug_log, "w") as f:
-                f.write("=== CSS Loading Debug ===\n")
-
-                css_provider = Gtk.CssProvider()
-                script_dir = Path(__file__).parent
-
-                # Try to load from bundled style.css
-                css_locations = [
-                    script_dir / ".." / "style.css",
-                    Path.home() / ".config" / "summit" / "style.css",
-                    script_dir / "style.css",
-                ]
-
-                css_file = None
-                for loc in css_locations:
-                    exists = loc.exists()
-                    f.write(f"Checking: {loc} - exists: {exists}\n")
-                    if exists:
-                        css_file = loc
-                        break
-
-                if css_file:
-                    f.write(f"Loading from: {css_file.resolve()}\n")
-                    try:
-                        css_provider.load_from_path(str(css_file.resolve()))
-                        f.write(f"Loaded successfully\n")
-                    except Exception as e:
-                        f.write(f"Error loading file: {e}\n")
-                else:
-                    f.write(f"No file found, using inline fallback\n")
-                    # Inline fallback
-                    css_provider.load_from_string(self.get_inline_css())
-
-                display = Gdk.Display.get_default()
-                if display:
-                    Gtk.StyleContext.add_provider_for_display(
-                        display, css_provider,
-                        Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
-                    )
-                    f.write(f"Provider added to display\n")
-                else:
-                    f.write(f"ERROR: Could not get display\n")
-
-                # Add highest-priority headerbar theme override
-                headerbar_provider = Gtk.CssProvider()
-                headerbar_provider.load_from_string(
-                    "headerbar.dark-mode { background-color: #222226; color: #e0e0e0; } "
-                    "headerbar.light-mode { background-color: #ebebed; color: #333333; }"
-                )
-                if display:
-                    # Use highest priority to ensure headerbar colors apply
-                    Gtk.StyleContext.add_provider_for_display(
-                        display, headerbar_provider,
-                        Gtk.STYLE_PROVIDER_PRIORITY_USER
-                    )
-                    f.write(f"Headerbar provider added to display with PRIORITY_USER\n")
-        except Exception as e:
-            import traceback
-            with open(debug_log, "a") as f:
-                f.write(f"ERROR: {e}\n")
-                f.write(traceback.format_exc())
-
-    def get_inline_css(self) -> str:
-        """Inline CSS fallback."""
-        return """
-        window {
-            background-color: #1a1a1a;
-            color: #e0e0e0;
-        }
-        button {
-            background-color: #353535;
-            color: #e0e0e0;
-        }
-        button:hover {
-            background-color: #454545;
-        }
-        """
 
     def load_config(self):
         """Load configuration with defaults."""
@@ -250,18 +148,8 @@ class SummitApp(Gtk.Application):
             self.toast_overlay.show_toast(message, is_error)
 
     def get_is_dark_mode(self) -> bool:
-        """Detect if dark theme is active. Tries Adwaita first, then theme name."""
-        # Try Adwaita style manager first (most reliable)
-        if HAS_ADWAITA:
-            try:
-                style_manager = Adw.StyleManager.get_default()
-                if style_manager:
-                    is_dark = style_manager.get_dark()
-                    return is_dark
-            except Exception as e:
-                pass
-
-        # Fallback to checking GTK theme name
+        """Detect if dark theme is active using GTK theme settings."""
+        # Check GTK theme settings
         settings = Gtk.Settings.get_default()
         if settings:
             # First try the prefer-dark-theme setting
@@ -279,44 +167,6 @@ class SummitApp(Gtk.Application):
         # Default to light mode if detection fails (LMDE uses light themes by default)
         return False
 
-    def on_theme_changed(self, *args):
-        """Handle system theme changes at runtime."""
-        if not self.window:
-            return
-
-        is_dark = self.get_is_dark_mode()
-
-        # Update window CSS classes
-        if is_dark:
-            self.window.remove_css_class("light-theme")
-        else:
-            self.window.add_css_class("light-theme")
-
-        # Update headerbar CSS classes and reapply inline CSS
-        if hasattr(self, 'header_bar'):
-            if is_dark:
-                self.header_bar.remove_css_class("light-mode")
-                self.header_bar.add_css_class("dark-mode")
-            else:
-                self.header_bar.remove_css_class("dark-mode")
-                self.header_bar.add_css_class("light-mode")
-
-        # Force style context reset on window and recursively on all children
-        self._reset_style_recursive(self.window)
-
-    def _reset_style_recursive(self, widget):
-        """Recursively reset style on widget and all children to force CSS recalculation."""
-        try:
-            widget.reset_style()
-        except Exception:
-            pass
-
-        # Recursively reset style on all child widgets
-        child = widget.get_first_child()
-        while child:
-            self._reset_style_recursive(child)
-            child = child.get_next_sibling()
-
     def build_window(self):
         """Build the main window."""
         self.window = Gtk.ApplicationWindow(application=self)
@@ -326,11 +176,6 @@ class SummitApp(Gtk.Application):
             self.config.get("window_height", 650)
         )
         self.window.connect("close-request", self.on_window_close)
-
-        # Apply theme class to window
-        is_dark_mode = self.get_is_dark_mode()
-        if not is_dark_mode:
-            self.window.add_css_class("light-theme")
 
         # Stack to replace notebook (for page switching)
         self.stack = Gtk.Stack()
@@ -540,20 +385,6 @@ class SummitApp(Gtk.Application):
         menu_button.set_menu_model(menu)
         header.pack_end(menu_button)
 
-        # Detect theme and apply CSS class + programmatic styling
-        is_dark_mode = self.get_is_dark_mode()
-
-        if is_dark_mode:
-            header.add_css_class("dark-mode")
-        else:
-            header.add_css_class("light-mode")
-
-        # Debug: print all CSS classes on headerbar
-        classes = header.get_css_classes()
-
-        # Try to force style update
-        header.queue_draw()
-
         return header
 
     def on_tab_button_toggled(self, button: Gtk.ToggleButton, tab_name: str):
@@ -628,11 +459,6 @@ class SummitApp(Gtk.Application):
 
     def restore_window_state(self):
         """Restore window state after mapping."""
-        return False
-
-    def reapply_css(self):
-        """Reapply CSS after window is shown to override theme defaults."""
-        self.load_css()
         return False
 
     def start_polling(self):

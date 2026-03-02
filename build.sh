@@ -29,7 +29,6 @@ chmod 0755 "${BUILD_DIR}/DEBIAN/postinst"
 
 echo "[4/7] Copying source files..."
 cp src/*.py               "${BUILD_DIR}/usr/share/${PACKAGE}/src/"
-cp style.css              "${BUILD_DIR}/usr/share/${PACKAGE}/"
 
 echo "[5/7] Creating launcher wrapper..."
 cat > "${BUILD_DIR}/usr/bin/${PACKAGE}" << 'LAUNCHER'
