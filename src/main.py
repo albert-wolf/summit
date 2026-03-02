@@ -177,11 +177,6 @@ class SummitApp(Gtk.Application):
         )
         self.window.connect("close-request", self.on_window_close)
 
-        # Apply theme class to window
-        is_dark_mode = self.get_is_dark_mode()
-        if not is_dark_mode:
-            self.window.add_css_class("light-theme")
-
         # Stack to replace notebook (for page switching)
         self.stack = Gtk.Stack()
         self.stack.set_hexpand(True)
