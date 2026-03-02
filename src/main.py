@@ -385,20 +385,6 @@ class SummitApp(Gtk.Application):
         menu_button.set_menu_model(menu)
         header.pack_end(menu_button)
 
-        # Detect theme and apply CSS class + programmatic styling
-        is_dark_mode = self.get_is_dark_mode()
-
-        if is_dark_mode:
-            header.add_css_class("dark-mode")
-        else:
-            header.add_css_class("light-mode")
-
-        # Debug: print all CSS classes on headerbar
-        classes = header.get_css_classes()
-
-        # Try to force style update
-        header.queue_draw()
-
         return header
 
     def on_tab_button_toggled(self, button: Gtk.ToggleButton, tab_name: str):
