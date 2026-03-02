@@ -13,14 +13,6 @@ gi.require_version('Gio', '2.0')
 from gi.repository import Gtk, Gio, GLib, Gdk
 from pathlib import Path
 
-# Try to import Adwaita for better theme detection
-try:
-    gi.require_version('Adw', '1')
-    from gi.repository import Adw
-    HAS_ADWAITA = True
-except (ValueError, ImportError):
-    HAS_ADWAITA = False
-
 from summit_manager import SummitManager
 from status_pane import StatusPane
 from servers_pane import ServersPane
