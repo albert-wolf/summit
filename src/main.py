@@ -167,44 +167,6 @@ class SummitApp(Gtk.Application):
         # Default to light mode if detection fails (LMDE uses light themes by default)
         return False
 
-    def on_theme_changed(self, *args):
-        """Handle system theme changes at runtime."""
-        if not self.window:
-            return
-
-        is_dark = self.get_is_dark_mode()
-
-        # Update window CSS classes
-        if is_dark:
-            self.window.remove_css_class("light-theme")
-        else:
-            self.window.add_css_class("light-theme")
-
-        # Update headerbar CSS classes and reapply inline CSS
-        if hasattr(self, 'header_bar'):
-            if is_dark:
-                self.header_bar.remove_css_class("light-mode")
-                self.header_bar.add_css_class("dark-mode")
-            else:
-                self.header_bar.remove_css_class("dark-mode")
-                self.header_bar.add_css_class("light-mode")
-
-        # Force style context reset on window and recursively on all children
-        self._reset_style_recursive(self.window)
-
-    def _reset_style_recursive(self, widget):
-        """Recursively reset style on widget and all children to force CSS recalculation."""
-        try:
-            widget.reset_style()
-        except Exception:
-            pass
-
-        # Recursively reset style on all child widgets
-        child = widget.get_first_child()
-        while child:
-            self._reset_style_recursive(child)
-            child = child.get_next_sibling()
-
     def build_window(self):
         """Build the main window."""
         self.window = Gtk.ApplicationWindow(application=self)
