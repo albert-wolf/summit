@@ -50,15 +50,6 @@ class SummitApp(Gtk.Application):
         Gtk.Application.do_startup(self)
         self.load_css()
 
-        # Listen for system theme changes
-        if HAS_ADWAITA:
-            try:
-                style_manager = Adw.StyleManager.get_default()
-                if style_manager:
-                    style_manager.connect("notify::dark", self.on_theme_changed)
-            except Exception:
-                pass
-
         if not self.window:
             try:
                 self.load_config()
@@ -242,18 +233,8 @@ class SummitApp(Gtk.Application):
             self.toast_overlay.show_toast(message, is_error)
 
     def get_is_dark_mode(self) -> bool:
-        """Detect if dark theme is active. Tries Adwaita first, then theme name."""
-        # Try Adwaita style manager first (most reliable)
-        if HAS_ADWAITA:
-            try:
-                style_manager = Adw.StyleManager.get_default()
-                if style_manager:
-                    is_dark = style_manager.get_dark()
-                    return is_dark
-            except Exception as e:
-                pass
-
-        # Fallback to checking GTK theme name
+        """Detect if dark theme is active using GTK theme settings."""
+        # Check GTK theme settings
         settings = Gtk.Settings.get_default()
         if settings:
             # First try the prefer-dark-theme setting
