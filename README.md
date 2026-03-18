@@ -1,15 +1,10 @@
-# Summit — GTK4 NordVPN GUI
-An unofficial, community-developed GTK4 graphical interface for the NordVPN command-line tool on Linux.
+# Summit — GTK4 NordVPN GUI (v2.0.0)
+An unofficial, community-developed, professional GTK4 graphical interface for the NordVPN command-line tool on Linux.
 
 <img width="942" height="650" alt="image" src="https://github.com/user-attachments/assets/d1030e2d-829e-4b33-a3b2-2619a5687dac" />
 <img width="942" height="650" alt="image" src="https://github.com/user-attachments/assets/f8d473e9-8090-4500-b62e-e1c4aaea7ed1" />
 <img width="942" height="650" alt="image" src="https://github.com/user-attachments/assets/70955d01-6b18-43e8-9ca4-d00322cbe18b" />
 <img width="942" height="650" alt="image" src="https://github.com/user-attachments/assets/e7104de1-0a61-4460-ba3f-2e107b987cb3" />
-
-
-## ⚠️ Work In Progress
-
-Summit is actively being developed. Features may change, bugs may exist, and some functionality is still being refined. Contributions, feedback, and bug reports are welcome.
 
 ## ⚠️ Disclaimer
 
@@ -17,51 +12,63 @@ Summit is actively being developed. Features may change, bugs may exist, and som
 
 ## Features
 
-- **5-Tab Interface**:
-  - **Status**: Real-time VPN connection status with colored indicator, quick connect/disconnect/reconnect buttons
-  - **Servers**: Country and city selection with live search and auto-highlighting
-  - **Settings**: Toggle all NordVPN settings (Kill Switch, Firewall, Auto-connect, etc.) and select technology/protocol
-  - **Ports**: Manage allowlisted ports with add/remove interface
-  - **Meshnet**: Enable/disable meshnet and view connected peers
+- **Modern 5-Tab Interface**:
+  - **Status**: Real-time VPN connection monitoring with shaded card-style hierarchy and quick connect/disconnect/reconnect controls.
+  - **Servers**: Intelligent country and city selection with live global search and automatic highlighting.
+  - **Settings**: Comprehensive control over NordVPN features (Kill Switch, Firewall, Auto-connect, Obfuscate, etc.) and protocol selection.
+  - **Ports**: Streamlined allowlisted port management.
+  - **Meshnet**: Native 3-column layout for managing Meshnet state and peer visibility (This Device, Connected, Disconnected).
 
-- **Real-Time Polling**: Status updates every 2 seconds
-- **City Search**: Search cities by name — matching country auto-highlights in the left pane
-- **Server Cache**: City-to-country mappings cached locally for fast startup
-- **Configuration Persistence**: Window size, position, and last-selected tab saved to `~/.config/summit/config.json`
-- **Async Operations**: All CLI commands run in background threads for a responsive UI
+- **High Performance Architecture**:
+  - **Blueprint UI**: Layouts defined using modern Blueprint (`.blp`) templates for clean separation of design and logic.
+  - **GResource Bundling**: All UI assets and styling compiled into high-performance GResource binaries.
+  - **Async Threading**: All NordVPN CLI interactions run in non-blocking background threads to ensure a responsive GUI.
+  - **XDG Compliance**: User configuration persisted in `~/.config/summit/config.json`.
 
 ## Requirements
 
-- Linux (Debian/Ubuntu-based recommended)
-- Python 3.10+
+- Linux (Native Debian/LMDE or universal Flatpak)
 - NordVPN CLI (`nordvpn`) installed and logged in
-- GTK4 libraries
-- PyGObject
+- Python 3.10+ (for source builds)
+- GTK 4.0 & PyGObject
 
 ## Installation
 
-### From .deb Package (Recommended)
+### 1. From .deb Package (Native Debian/LMDE)
+Download the latest release from the `dist/` folder or the Releases page.
 
 ```bash
 sudo dpkg -i dist/summit_2.0.0_all.deb
-sudo apt-get install -f  # Install any missing dependencies
+sudo apt-get install -f  # Resolve any missing dependencies
 summit
 ```
 
-### From Source
+### 2. From Flatpak (Universal Linux)
+Summit supports sandboxed distribution via Flatpak.
 
 ```bash
-# Install dependencies
-sudo apt-get install python3 python3-gi gir1.2-gtk-4.0
+# Build and install locally
+bash build.sh flatpak
+flatpak run io.github.summit
+```
 
-# Run directly
-python3 src/main.py
+### 3. From Source (Development)
+The project uses **`uv`** for modern Python dependency management.
+
+```bash
+# Install system build dependencies
+sudo apt-get install blueprint-compiler libgirepository-2.0-dev libcairo2-dev
+
+# Sync environment and run
+uv sync
+bash build.sh  # Compiles resources
+uv run python src/main.py
 ```
 
 ## NordVPN Setup
 
 ```bash
-# Install NordVPN CLI
+# Install NordVPN CLI (Official)
 curl https://repo.nordvpn.com/gpg/nordvpn_public.asc | sudo apt-key add -
 echo 'deb https://repo.nordvpn.com/deb/nordvpn/debian stable main' | sudo tee /etc/apt/sources.list.d/nordvpn.list
 sudo apt update && sudo apt install nordvpn
@@ -75,44 +82,22 @@ nordvpn login
 ```
 Summit/
 ├── src/
-│   ├── main.py              # GTK Application, window layout, config, polling
-│   ├── summit_manager.py    # NordVPN CLI wrapper (no GTK dependencies)
-│   ├── status_pane.py       # Tab 1: Status display & connect/disconnect
-│   ├── servers_pane.py      # Tab 2: Country/city selection with search
-│   ├── settings_pane.py     # Tab 3: Boolean toggles & protocol selector
-│   ├── ports_pane.py        # Tab 4: Port allowlist management
-│   ├── meshnet_pane.py      # Tab 5: Meshnet toggle & peer list
-│   └── recent_pane.py       # Sidebar: Recent connections & favorites
-├── tests/
-│   └── test_servers_pane.py # Unit tests
-├── style.css                # GTK4 dark theme
-├── build.sh                 # .deb build script
-├── debian/                  # Debian package metadata
-├── docs/                    # Design documents and plans
-├── dist/                    # Build artifacts
-│   └── summit_2.0.0_all.deb # Pre-built installer
-├── DISCLAIMER.md            # Legal disclaimer
+│   ├── ui/                  # Blueprint (.blp) UI templates
+│   ├── resources/           # CSS styles and GResource manifests
+│   ├── main.py              # Application entry point & GResource loading
+│   ├── summit_manager.py    # Decoupled NordVPN CLI wrapper
+│   └── *_pane.py            # Modular UI components (Template-based)
+├── dist/                    # Production build artifacts (.deb)
+├── docs/                    # Architectural plans and design docs
+├── io.github.summit.json    # Flatpak manifest
+├── pyproject.toml           # Modern Python metadata (uv/ruff)
+├── build.sh                 # Unified Debian/Flatpak build script
 └── README.md                # This file
 ```
 
-## Uninstall
-
-```bash
-# If installed via .deb
-sudo dpkg -r summit
-
-# If running from source, just delete the folder
-```
-
-## Known Limitations
-
-- Requires active NordVPN login (`nordvpn login`)
-- Meshnet must be enabled before viewing peers
-- Country/city names use underscore format (NordVPN CLI format)
-
 ## Support This Project
 
-If you find Summit useful and want to support future development, your support helps fund new projects and improvements.
+If you find Summit useful, your support helps fund new projects and continuous improvements.
 
 **[Buy me a coffee ☕](https://ko-fi.com/wolf792280)**
 
