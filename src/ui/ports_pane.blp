@@ -1,0 +1,59 @@
+using Gtk 4.0;
+
+template PortsPane : Gtk.Box {
+  orientation: vertical;
+  spacing: 12;
+  margin-top: 12;
+  margin-bottom: 12;
+  margin-start: 12;
+  margin-end: 12;
+
+  Box {
+    orientation: horizontal;
+    Label {
+      label: _("Allowlisted Ports");
+      styles ["heading"]
+      xalign: 0;
+      hexpand: true;
+    }
+  }
+
+  ScrolledWindow {
+    styles ["pane-box"]
+    vexpand: true;
+    hexpand: true;
+
+    ListBox ports_list {
+      selection-mode: none;
+    }
+  }
+
+  Box {
+    orientation: horizontal;
+    spacing: 8;
+    margin-top: 12;
+
+    SpinButton port_spin {
+      adjustment: Adjustment {
+        lower: 1;
+        upper: 65535;
+        step-increment: 1;
+        page-increment: 10;
+        value: 1;
+      };
+      numeric: true;
+      hexpand: true;
+    }
+
+    DropDown proto_dropdown {
+      model: StringList {
+        strings ["Both", "TCP", "UDP"]
+      };
+    }
+
+    Button add_btn {
+      label: _("Add Port");
+      clicked => $on_add_port_clicked();
+    }
+  }
+}

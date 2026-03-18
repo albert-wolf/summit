@@ -1,0 +1,214 @@
+using Gtk 4.0;
+
+template $StatusPane : Gtk.Box {
+  orientation: vertical;
+  spacing: 12;
+  margin-top: 12;
+  margin-bottom: 12;
+  margin-start: 12;
+  margin-end: 12;
+
+  Box {
+    orientation: horizontal;
+    spacing: 8;
+
+    Box {
+      orientation: horizontal;
+      spacing: 4;
+
+      Label status_dot {
+        label: "●";
+        styles ["heading"]
+        width-request: 24;
+        height-request: 24;
+      }
+
+      Gtk.Spinner status_spinner {
+        width-request: 24;
+        height-request: 24;
+        visible: false;
+      }
+    }
+
+    Label status_label {
+      label: "Disconnected";
+      styles ["heading"]
+    }
+  }
+
+  Box {
+    orientation: vertical;
+    styles ["pane-box"]
+
+    Gtk.Grid {
+      row-spacing: 8;
+      column-spacing: 12;
+      margin-top: 4;
+      margin-bottom: 4;
+      margin-start: 4;
+      margin-end: 4;
+
+      Label {
+        label: "Server:";
+        halign: end;
+        layout {
+          column: 0;
+          row: 0;
+        }
+      }
+
+      Label server_value {
+        label: "—";
+        halign: start;
+        layout {
+          column: 1;
+          row: 0;
+        }
+      }
+
+      Label {
+        label: "IP:";
+        halign: end;
+        layout {
+          column: 0;
+          row: 1;
+        }
+      }
+
+      Label ip_value {
+        label: "—";
+        halign: start;
+        layout {
+          column: 1;
+          row: 1;
+        }
+      }
+
+      Label {
+        label: "Country:";
+        halign: end;
+        layout {
+          column: 0;
+          row: 2;
+        }
+      }
+
+      Label country_value {
+        label: "—";
+        halign: start;
+        layout {
+          column: 1;
+          row: 2;
+        }
+      }
+
+      Label {
+        label: "City:";
+        halign: end;
+        layout {
+          column: 0;
+          row: 3;
+        }
+      }
+
+      Label city_value {
+        label: "—";
+        halign: start;
+        layout {
+          column: 1;
+          row: 3;
+        }
+      }
+
+      Label {
+        label: "Technology:";
+        halign: end;
+        layout {
+          column: 0;
+          row: 4;
+        }
+      }
+
+      Label technology_value {
+        label: "—";
+        halign: start;
+        layout {
+          column: 1;
+          row: 4;
+        }
+      }
+
+      Label {
+        label: "Protocol:";
+        halign: end;
+        layout {
+          column: 0;
+          row: 5;
+        }
+      }
+
+      Label protocol_value {
+        label: "—";
+        halign: start;
+        layout {
+          column: 1;
+          row: 5;
+        }
+      }
+
+      Label {
+        label: "Transfer:";
+        halign: end;
+        layout {
+          column: 0;
+          row: 6;
+        }
+      }
+
+      Label transfer_value {
+        label: "—";
+        halign: start;
+        layout {
+          column: 1;
+          row: 6;
+        }
+      }
+
+      Label {
+        label: "Uptime:";
+        halign: end;
+        layout {
+          column: 0;
+          row: 7;
+        }
+      }
+
+      Label uptime_value {
+        label: "—";
+        halign: start;
+        layout {
+          column: 1;
+          row: 7;
+        }
+      }
+    }
+  }
+
+  Box {
+    orientation: horizontal;
+    spacing: 8;
+    margin-top: 12;
+
+    Button connect_btn {
+      label: "Connect";
+    }
+
+    Button disconnect_btn {
+      label: "Disconnect";
+    }
+
+    Button reconnect_btn {
+      label: "Reconnect";
+    }
+  }
+}

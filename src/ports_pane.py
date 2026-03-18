@@ -1,81 +1,46 @@
 import gi
-gi.require_version('Gtk', '4.0')
+
+gi.require_version("Gtk", "4.0")
 from gi.repository import Gtk, GLib
 from summit_manager import SummitManager
 
 
+@Gtk.Template(resource_path="/io/github/summit/ui/ports_pane.ui")
 class PortsPane(Gtk.Box):
     """Tab 4: Allowlisted Port Management"""
 
+    __gtype_name__ = "PortsPane"
+
+    ports_list = Gtk.Template.Child()
+    port_spin = Gtk.Template.Child()
+    proto_dropdown = Gtk.Template.Child()
+    add_btn = Gtk.Template.Child()
+
     def __init__(self, manager: SummitManager):
-        super().__init__(orientation=Gtk.Orientation.VERTICAL, spacing=12)
-        self.set_margin_top(12)
-        self.set_margin_bottom(12)
-        self.set_margin_start(12)
-        self.set_margin_end(12)
+        super().__init__()
 
         self.manager = manager
         self.ports = []
-
-        # Title
-        title = Gtk.Label(label="Allowlisted Ports")
-        title.add_css_class("heading")
-        self.append(title)
-
-        # Ports list with border
-        ports_container = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
-        ports_container.add_css_class("pane-box")
-        ports_container.set_margin_top(8)
-        ports_container.set_margin_bottom(8)
-        ports_container.set_margin_start(8)
-        ports_container.set_margin_end(8)
-
-        scrolled = Gtk.ScrolledWindow()
-        scrolled.set_vexpand(True)
-        scrolled.set_hexpand(True)
-
-        self.ports_listbox = Gtk.ListBox()
-        self.ports_listbox.set_selection_mode(Gtk.SelectionMode.NONE)
-
-        scrolled.set_child(self.ports_listbox)
-        ports_container.append(scrolled)
-        self.append(ports_container)
-
-        # Add port section
-        add_port_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
-        add_port_box.set_margin_top(12)
-
-        self.port_entry = Gtk.Entry()
-        self.port_entry.set_placeholder_text("Port (1-65535)")
-        self.port_entry.set_width_chars(15)
-        add_port_box.append(self.port_entry)
-
-        self.protocol_dropdown = Gtk.DropDown.new_from_strings(["Both", "TCP", "UDP"])
-        add_port_box.append(self.protocol_dropdown)
-
-        self.add_btn = Gtk.Button(label="Add Port")
-        self.add_btn.connect("clicked", self.on_add_port_clicked)
-        add_port_box.append(self.add_btn)
-
-        self.append(add_port_box)
 
         # Load ports
         self.load_ports()
 
     def load_ports(self):
         """Load ports list in background thread."""
+
         def worker():
             settings = self.manager.get_settings()
             ports = settings.get("allowlisted_ports", [])
             GLib.idle_add(self.on_ports_loaded, ports)
 
         import threading
+
         thread = threading.Thread(target=worker, daemon=True)
         thread.start()
 
     def on_ports_loaded(self, ports):
         """Populate ports listbox with remove buttons."""
-        self.ports_listbox.remove_all()
+        self.ports_list.remove_all()
         self.ports = ports
 
         for port_entry in ports:
@@ -97,7 +62,7 @@ class PortsPane(Gtk.Box):
             row_box.append(remove_btn)
 
             row.set_child(row_box)
-            self.ports_listbox.append(row)
+            self.ports_list.append(row)
 
         return False
 
@@ -119,20 +84,18 @@ class PortsPane(Gtk.Box):
             GLib.idle_add(self.on_port_operation_done, success)
 
         import threading
+
         thread = threading.Thread(target=worker, daemon=True)
         thread.start()
 
+    @Gtk.Template.Callback()
     def on_add_port_clicked(self, button):
         """Add port to allowlist."""
-        port_text = self.port_entry.get_text().strip()
-        if not port_text or not port_text.isdigit():
-            return
-
-        port_num = int(port_text)
+        port_num = self.port_spin.get_value_as_int()
         if port_num < 1 or port_num > 65535:
             return
 
-        selected = self.protocol_dropdown.get_selected()
+        selected = self.proto_dropdown.get_selected()
         # Map dropdown selection: 0=Both (None), 1=TCP, 2=UDP
         protocol = [None, "TCP", "UDP"][selected]
 
@@ -144,6 +107,7 @@ class PortsPane(Gtk.Box):
             GLib.idle_add(self.on_port_operation_done, success)
 
         import threading
+
         thread = threading.Thread(target=worker, daemon=True)
         thread.start()
 
@@ -151,7 +115,7 @@ class PortsPane(Gtk.Box):
         """Handle port operation completion."""
         self.add_btn.set_sensitive(True)
         self.add_btn.set_label("Add Port")
-        self.port_entry.set_text("")
-        self.protocol_dropdown.set_selected(0)
+        self.port_spin.set_value(1)
+        self.proto_dropdown.set_selected(0)
         self.load_ports()
         return False

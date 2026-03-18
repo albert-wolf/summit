@@ -1,17 +1,40 @@
 #!/usr/bin/env python3
 import sys
-import os
 import json
 import warnings
 import gi
 
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
-gi.require_version('Gtk', '4.0')
-gi.require_version('Gio', '2.0')
+gi.require_version("Gtk", "4.0")
+gi.require_version("Gdk", "4.0")
+gi.require_version("Gio", "2.0")
 
-from gi.repository import Gtk, Gio, GLib, Gdk
+from gi.repository import Gtk, Gdk, Gio, GLib
 from pathlib import Path
+
+
+# Resource loading
+def register_resources():
+    # Try installed path first
+    resource_file = Path("/usr/share/summit/resources/summit.gresource")
+    if not resource_file.exists():
+        # Fallback to local path for development (relative to this file in src/)
+        resource_file = Path(__file__).parent / "resources" / "summit.gresource"
+
+    if resource_file.exists():
+        try:
+            resource = Gio.Resource.load(str(resource_file))
+            resource._register()
+        except Exception as e:
+            print(f"Error loading resources: {e}")
+    else:
+        # If we are in the build directory, it might be in ../usr/share/summit/resources/
+        # but let's stick to these two for now.
+        print(f"Warning: Resource file not found: {resource_file}")
+
+
+register_resources()
 
 from summit_manager import SummitManager
 from status_pane import StatusPane
@@ -27,10 +50,7 @@ class SummitApp(Gtk.Application):
     """Summit - NordVPN Client for GTK4 Application."""
 
     def __init__(self):
-        super().__init__(
-            application_id="io.github.summit",
-            flags=Gio.ApplicationFlags.NON_UNIQUE
-        )
+        super().__init__(application_id="io.github.summit", flags=Gio.ApplicationFlags.NON_UNIQUE)
         self.manager = SummitManager()
         self.window = None
         self.config = {}
@@ -49,6 +69,15 @@ class SummitApp(Gtk.Application):
         """Called during startup. Create window here."""
         Gtk.Application.do_startup(self)
 
+        # Load CSS provider
+        css_provider = Gtk.CssProvider()
+        css_provider.load_from_resource("/io/github/summit/resources/style.css")
+        Gtk.StyleContext.add_provider_for_display(
+            Gdk.Display.get_default(),
+            css_provider,
+            Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION,
+        )
+
         if not self.window:
             try:
                 self.load_config()
@@ -57,7 +86,9 @@ class SummitApp(Gtk.Application):
                 if not self.manager.is_installed():
                     dialog = Gtk.AlertDialog()
                     dialog.set_message("NordVPN Not Installed")
-                    dialog.set_detail_text("Please install NordVPN first:\nsudo apt install nordvpn")
+                    dialog.set_detail_text(
+                        "Please install NordVPN first:\nsudo apt install nordvpn"
+                    )
                     dialog.present(self.window if self.window else None)
                     self.quit()
                     return
@@ -69,15 +100,18 @@ class SummitApp(Gtk.Application):
             except Exception as e:
                 print(f"[ERROR] Failed to build window: {e}")
                 import traceback
+
                 traceback.print_exc()
 
     def check_login_status(self):
         """Check if logged in asynchronously, show dialog if not (runs via idle_add)."""
+
         def worker():
             is_logged_in = self.manager.is_logged_in()
             GLib.idle_add(self.show_login_dialog_if_needed, is_logged_in)
 
         import threading
+
         thread = threading.Thread(target=worker, daemon=True)
         thread.start()
         return False
@@ -87,7 +121,9 @@ class SummitApp(Gtk.Application):
         if not is_logged_in:
             dialog = Gtk.AlertDialog()
             dialog.set_message("Not Logged In")
-            dialog.set_detail_text("Please log in to NordVPN first:\nRun 'nordvpn login' in a terminal")
+            dialog.set_detail_text(
+                "Please log in to NordVPN first:\nRun 'nordvpn login' in a terminal"
+            )
             dialog.present(self.window)
         return False
 
@@ -114,7 +150,7 @@ class SummitApp(Gtk.Application):
 
         if self.config_file.exists():
             try:
-                with open(self.config_file, 'r') as f:
+                with open(self.config_file, "r") as f:
                     self.config = json.load(f)
                     # Merge with defaults
                     for key, val in defaults.items():
@@ -132,19 +168,19 @@ class SummitApp(Gtk.Application):
             self.config["window_height"] = self.window.get_height()
 
         # Save auto-connect settings
-        if hasattr(self, 'settings_pane'):
+        if hasattr(self, "settings_pane"):
             autoconnect_config = self.settings_pane.get_autoconnect_config()
             self.config.update(autoconnect_config)
 
         try:
-            with open(self.config_file, 'w') as f:
+            with open(self.config_file, "w") as f:
                 json.dump(self.config, f, indent=2)
         except Exception as e:
             print(f"[ERROR] Failed to save config: {e}")
 
     def show_toast(self, message: str, is_error: bool = False):
         """Show a toast notification from any pane."""
-        if hasattr(self, 'toast_overlay'):
+        if hasattr(self, "toast_overlay"):
             self.toast_overlay.show_toast(message, is_error)
 
     def get_is_dark_mode(self) -> bool:
@@ -172,8 +208,7 @@ class SummitApp(Gtk.Application):
         self.window = Gtk.ApplicationWindow(application=self)
         self.window.set_title("Summit")
         self.window.set_default_size(
-            self.config.get("window_width", 900),
-            self.config.get("window_height", 650)
+            self.config.get("window_width", 900), self.config.get("window_height", 650)
         )
         self.window.connect("close-request", self.on_window_close)
 
@@ -190,7 +225,7 @@ class SummitApp(Gtk.Application):
         self.status_pane = StatusPane(
             self.manager,
             on_status_change=self.on_status_change,
-            on_connect_click=self.switch_to_servers_tab
+            on_connect_click=self.switch_to_servers_tab,
         )
         self.status_pane.set_app_ref(self)
         self.stack.add_named(self.status_pane, "status")
@@ -205,7 +240,9 @@ class SummitApp(Gtk.Application):
         self.stack.add_named(self.settings_pane, "settings")
 
         # Load auto-connect state
-        self.settings_pane.autoconnect_switch.set_active(self.config.get("autoconnect_enabled", False))
+        self.settings_pane.autoconnect_switch.set_active(
+            self.config.get("autoconnect_enabled", False)
+        )
 
         # Populate auto-connect countries in background
         def load_autoconnect_data():
@@ -247,6 +284,7 @@ class SummitApp(Gtk.Application):
             GLib.idle_add(populate)
 
         import threading
+
         thread = threading.Thread(target=load_autoconnect_data, daemon=True)
         thread.start()
 
@@ -301,14 +339,14 @@ class SummitApp(Gtk.Application):
     def load_initial_pane_data(self):
         """Load initial data for all panes in background after window shows."""
         # Load settings asynchronously
-        if hasattr(self, 'settings_pane'):
+        if hasattr(self, "settings_pane"):
             self.settings_pane.load_settings(synchronous=False)
         # Load status for status pane
-        if hasattr(self, 'status_pane'):
+        if hasattr(self, "status_pane"):
             self.status_pane.update_status()
         # Meshnet state is loaded in __init__ synchronously
         # Load ports for ports pane
-        if hasattr(self, 'ports_pane'):
+        if hasattr(self, "ports_pane"):
             self.ports_pane.load_ports()
 
     def build_headerbar(self) -> Gtk.HeaderBar:
@@ -468,20 +506,22 @@ class SummitApp(Gtk.Application):
 
     def poll_status(self):
         """Start background thread to poll VPN status - never block the main thread."""
+
         def worker():
             try:
                 # Fetch status once and share between both panes
                 status = self.manager.get_status()
 
                 # Update both panes with the same status result
-                if hasattr(self, 'status_pane'):
+                if hasattr(self, "status_pane"):
                     GLib.idle_add(self.status_pane.apply_status, status)
-                if hasattr(self, 'recent_pane'):
+                if hasattr(self, "recent_pane"):
                     GLib.idle_add(self.recent_pane.apply_status, status)
             except Exception as e:
                 print(f"[ERROR] Poll failed: {e}")
 
         import threading
+
         thread = threading.Thread(target=worker, daemon=True)
         thread.start()
         return True  # Keep polling
@@ -500,7 +540,11 @@ class SummitApp(Gtk.Application):
 
     def update_right_pane_visibility(self, page_num=None):
         """Show right pane only on Status tab."""
-        if not hasattr(self, 'recent_pane') or not hasattr(self, 'content_paned') or not hasattr(self, 'stack'):
+        if (
+            not hasattr(self, "recent_pane")
+            or not hasattr(self, "content_paned")
+            or not hasattr(self, "stack")
+        ):
             return
 
         # Get current tab from stack

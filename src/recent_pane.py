@@ -1,15 +1,19 @@
 import gi
-gi.require_version('Gtk', '4.0')
+
+gi.require_version("Gtk", "4.0")
 from gi.repository import Gtk, GLib
-from summit_manager import SummitManager
 from datetime import datetime
 
 
 class RecentPane(Gtk.Box):
     """Sidebar showing recent connection history with click-to-connect"""
 
-    def __init__(self, manager: SummitManager):
-        super().__init__(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+    __gtype_name__ = "RecentPane"
+
+    def __init__(self, manager=None, **kwargs):
+        super().__init__(**kwargs)
+        self.set_orientation(Gtk.Orientation.VERTICAL)
+        self.set_spacing(8)
         self.set_margin_top(12)
         self.set_margin_bottom(12)
         self.set_margin_start(12)
@@ -33,6 +37,7 @@ class RecentPane(Gtk.Box):
         self.favorites_listbox.connect("row-activated", self.on_favorite_clicked)
 
         favorites_scrolled = Gtk.ScrolledWindow()
+        favorites_scrolled.add_css_class("pane-box")
         favorites_scrolled.set_vexpand(False)
         favorites_scrolled.set_max_content_height(150)
         favorites_scrolled.set_child(self.favorites_listbox)
@@ -46,6 +51,7 @@ class RecentPane(Gtk.Box):
 
         # Recent connections list
         scrolled = Gtk.ScrolledWindow()
+        scrolled.add_css_class("pane-box")
         scrolled.set_vexpand(True)
         scrolled.set_hexpand(True)
 
@@ -102,8 +108,12 @@ class RecentPane(Gtk.Box):
             label.set_hexpand(True)
 
             # Highlight if current connection (compare by city and country underscore format)
-            current_city = self.current_connection.get("city", "") if self.current_connection else ""
-            current_country = self.current_connection.get("country", "") if self.current_connection else ""
+            current_city = (
+                self.current_connection.get("city", "") if self.current_connection else ""
+            )
+            current_country = (
+                self.current_connection.get("country", "") if self.current_connection else ""
+            )
             if country == current_country and city == current_city:
                 label.set_markup(f"<b>{display_text}</b>")
 
@@ -133,12 +143,12 @@ class RecentPane(Gtk.Box):
 
     def on_favorite_clicked(self, listbox, row):
         """Handle clicking a favorite."""
-        if not hasattr(row, 'favorite_data'):
+        if not hasattr(row, "favorite_data"):
             return
 
         fav = row.favorite_data
-        country = fav.get('country', '')
-        city = fav.get('city', '')
+        country = fav.get("country", "")
+        city = fav.get("city", "")
 
         if not country:
             return
@@ -152,6 +162,7 @@ class RecentPane(Gtk.Box):
             GLib.idle_add(self.on_connect_done, success, row, message)
 
         import threading
+
         threading.Thread(target=worker, daemon=True).start()
 
     def apply_status(self, status):
@@ -171,7 +182,7 @@ class RecentPane(Gtk.Box):
             # Track current connection for highlighting (use underscore format for matching)
             self.current_connection = {
                 "country": country.replace(" ", "_"),
-                "city": city.replace(" ", "_")
+                "city": city.replace(" ", "_"),
             }
 
             # Only add to history if this is a NEW connection (different server than last)
@@ -203,11 +214,11 @@ class RecentPane(Gtk.Box):
 
         # Add to history
         entry = {
-            'text': display_text,
-            'country': country,
-            'city': city,
-            'server': server,
-            'time': timestamp
+            "text": display_text,
+            "country": country,
+            "city": city,
+            "server": server,
+            "time": timestamp,
         }
         self.connection_history.insert(0, entry)
 
@@ -239,18 +250,22 @@ class RecentPane(Gtk.Box):
             row_box.set_margin_start(8)
             row_box.set_margin_end(8)
 
-            time_label = Gtk.Label(label=entry['time'])
+            time_label = Gtk.Label(label=entry["time"])
             time_label.add_css_class("dim-label")
             time_label.set_xalign(0)
             row_box.append(time_label)
 
-            text_label = Gtk.Label(label=entry['text'])
+            text_label = Gtk.Label(label=entry["text"])
             text_label.set_wrap(True)
             text_label.set_wrap_mode(1)  # Gtk.WrapMode.WORD
             text_label.set_xalign(0)
 
             # Highlight if current connection
-            if self.current_connection and entry['country'] == self.current_connection['country'] and entry['city'] == self.current_connection['city']:
+            if (
+                self.current_connection
+                and entry["country"] == self.current_connection["country"]
+                and entry["city"] == self.current_connection["city"]
+            ):
                 text_label.set_markup(f"<b>{entry['text']}</b>")
             elif i == 0:
                 # Latest connection - highlight it (if not currently connected)
@@ -267,12 +282,12 @@ class RecentPane(Gtk.Box):
 
     def on_connection_clicked(self, listbox, row):
         """Handle clicking a recent connection - connect to it."""
-        if not hasattr(row, 'entry_data'):
+        if not hasattr(row, "entry_data"):
             return
 
         entry = row.entry_data
-        country = entry.get('country', '')
-        city = entry.get('city', '')
+        country = entry.get("country", "")
+        city = entry.get("city", "")
 
         if not country:
             return  # Can't connect without country
@@ -289,6 +304,7 @@ class RecentPane(Gtk.Box):
             GLib.idle_add(self.on_connect_done, success, row, message)
 
         import threading
+
         thread = threading.Thread(target=worker, daemon=True)
         thread.start()
 
