@@ -4,14 +4,14 @@ import sys
 import os
 
 # Add src directory to path for imports
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from servers_pane import ServersPane
 
 
 class TestCityToCountriesMapping(unittest.TestCase):
-    @patch('os.path.exists')
-    @patch('builtins.open', create=True)
+    @patch("os.path.exists")
+    @patch("builtins.open", create=True)
     def test_load_city_to_countries_from_cache(self, mock_open, mock_exists):
         """Test loading city_to_countries from cache file."""
         import json
@@ -19,10 +19,7 @@ class TestCityToCountriesMapping(unittest.TestCase):
         # Mock cache file exists and contains data
         cache_data = {
             "version": 1,
-            "city_to_countries": {
-                "New_York": ["United_States"],
-                "Toronto": ["Canada"]
-            }
+            "city_to_countries": {"New_York": ["United_States"], "Toronto": ["Canada"]},
         }
 
         mock_exists.return_value = True
@@ -38,16 +35,13 @@ class TestCityToCountriesMapping(unittest.TestCase):
         assert "New_York" in result
         assert result["New_York"] == ["United_States"]
 
-    @patch('builtins.open', create=True)
+    @patch("builtins.open", create=True)
     def test_save_city_to_countries_to_cache(self, mock_open):
         """Test saving city_to_countries to cache file."""
         mock_manager = Mock()
         pane = ServersPane(mock_manager)
 
-        test_mapping = {
-            "New_York": ["United_States"],
-            "Toronto": ["Canada"]
-        }
+        test_mapping = {"New_York": ["United_States"], "Toronto": ["Canada"]}
 
         pane.save_city_to_countries_to_cache(test_mapping)
 
@@ -62,10 +56,7 @@ class TestCityToCountriesMapping(unittest.TestCase):
         # Set up data where search text "York" could match city "New_York" and country "New_York_Land"
         pane.all_countries = ["United_States", "New_York_Land"]
         pane.all_cities = ["New_York", "Toronto"]
-        pane.city_to_countries = {
-            "New_York": ["United_States"],
-            "Toronto": ["Canada"]
-        }
+        pane.city_to_countries = {"New_York": ["United_States"], "Toronto": ["Canada"]}
 
         # Search for "york" - should prioritize city "New_York" and return ["United_States"]
         # NOT the country "New_York_Land"
@@ -91,7 +82,7 @@ class TestCityToCountriesMapping(unittest.TestCase):
             "Los_Angeles": ["United_States"],
             "Toronto": ["Canada"],
             "Vancouver": ["Canada"],
-            "London": ["United_Kingdom"]
+            "London": ["United_Kingdom"],
         }
 
         # Test 1: Search for city "New" should return ["United_States"]
@@ -123,7 +114,7 @@ class TestCityToCountriesMapping(unittest.TestCase):
         mock_manager.get_countries.return_value = ["United_States", "Canada"]
         mock_manager.get_cities.side_effect = lambda country: {
             "United_States": ["New_York", "Los_Angeles"],
-            "Canada": ["Toronto", "Vancouver"]
+            "Canada": ["Toronto", "Vancouver"],
         }[country]
 
         # Create pane (will trigger city loading)
@@ -131,6 +122,7 @@ class TestCityToCountriesMapping(unittest.TestCase):
 
         # Wait for background thread to complete (0.5s sleep + execution time)
         import time
+
         time.sleep(1.0)
 
         # Check mapping
@@ -139,5 +131,5 @@ class TestCityToCountriesMapping(unittest.TestCase):
         assert pane.city_to_countries.get("Toronto") == ["Canada"]
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

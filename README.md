@@ -43,7 +43,7 @@ Summit is actively being developed. Features may change, bugs may exist, and som
 ### From .deb Package (Recommended)
 
 ```bash
-sudo dpkg -i summit_1.0.0_all.deb
+sudo dpkg -i dist/summit_2.0.0_all.deb
 sudo apt-get install -f  # Install any missing dependencies
 summit
 ```
@@ -89,7 +89,8 @@ Summit/
 ├── build.sh                 # .deb build script
 ├── debian/                  # Debian package metadata
 ├── docs/                    # Design documents and plans
-├── summit_1.0.0_all.deb     # Pre-built installer
+├── dist/                    # Build artifacts
+│   └── summit_2.0.0_all.deb # Pre-built installer
 ├── DISCLAIMER.md            # Legal disclaimer
 └── README.md                # This file
 ```

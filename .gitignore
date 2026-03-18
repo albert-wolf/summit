@@ -31,3 +31,16 @@ env/
 
 # Git worktrees
 .worktrees/
+
+# Modernization updates
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+.ruff_cache/
+src/ui/*.ui
+src/resources/*.gresource
+build/
+summit_*.deb
+dist/

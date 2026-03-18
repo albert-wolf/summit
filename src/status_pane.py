@@ -1,18 +1,35 @@
 import gi
-gi.require_version('Gtk', '4.0')
+
+gi.require_version("Gtk", "4.0")
 from gi.repository import Gtk, GLib
 from summit_manager import SummitManager
 
 
+@Gtk.Template(resource_path="/io/github/summit/ui/status_pane.ui")
 class StatusPane(Gtk.Box):
     """Tab 1: VPN Status and Connection Controls"""
 
+    __gtype_name__ = "StatusPane"
+
+    status_dot = Gtk.Template.Child()
+    status_spinner = Gtk.Template.Child()
+    status_label = Gtk.Template.Child()
+
+    server_value = Gtk.Template.Child()
+    ip_value = Gtk.Template.Child()
+    country_value = Gtk.Template.Child()
+    city_value = Gtk.Template.Child()
+    technology_value = Gtk.Template.Child()
+    protocol_value = Gtk.Template.Child()
+    transfer_value = Gtk.Template.Child()
+    uptime_value = Gtk.Template.Child()
+
+    connect_btn = Gtk.Template.Child()
+    disconnect_btn = Gtk.Template.Child()
+    reconnect_btn = Gtk.Template.Child()
+
     def __init__(self, manager: SummitManager, on_status_change=None, on_connect_click=None):
-        super().__init__(orientation=Gtk.Orientation.VERTICAL, spacing=12)
-        self.set_margin_top(12)
-        self.set_margin_bottom(12)
-        self.set_margin_start(12)
-        self.set_margin_end(12)
+        super().__init__()
 
         self.manager = manager
         self.on_status_change = on_status_change
@@ -21,75 +38,21 @@ class StatusPane(Gtk.Box):
         self.app_ref = None
         self.is_connecting = False
 
-        # Status indicator with optional spinner
-        status_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        self.status_fields = {
+            "Server": self.server_value,
+            "IP": self.ip_value,
+            "Country": self.country_value,
+            "City": self.city_value,
+            "Technology": self.technology_value,
+            "Protocol": self.protocol_value,
+            "Transfer": self.transfer_value,
+            "Uptime": self.uptime_value,
+        }
 
-        self.status_indicator_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=4)
-        self.status_dot = Gtk.Label(label="●")
-        self.status_dot.add_css_class("heading")
-        self.status_dot.set_size_request(24, 24)
-        self.status_indicator_box.append(self.status_dot)
-
-        self.status_spinner = Gtk.Spinner()
-        self.status_spinner.set_size_request(24, 24)
-        self.status_spinner.set_visible(False)
-        self.status_indicator_box.append(self.status_spinner)
-
-        status_box.append(self.status_indicator_box)
-
-        self.status_label = Gtk.Label(label="Disconnected")
-        self.status_label.add_css_class("heading")
-        status_box.append(self.status_label)
-        self.append(status_box)
-
-        # Status grid with border
-        grid_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
-        grid_box.add_css_class("pane-box")
-        grid_box.set_margin_top(8)
-        grid_box.set_margin_bottom(8)
-        grid_box.set_margin_start(8)
-        grid_box.set_margin_end(8)
-
-        self.grid = Gtk.Grid()
-        self.grid.set_row_spacing(8)
-        self.grid.set_column_spacing(12)
-        self.grid.set_margin_top(4)
-        self.grid.set_margin_bottom(4)
-        self.grid.set_margin_start(4)
-        self.grid.set_margin_end(4)
-
-        self.status_fields = {}
-        fields = ["Server", "IP", "Country", "City", "Technology", "Protocol", "Transfer", "Uptime"]
-        for i, field in enumerate(fields):
-            label = Gtk.Label(label=f"{field}:")
-            label.set_xalign(1)  # Right align
-            self.grid.attach(label, 0, i, 1, 1)
-
-            value = Gtk.Label(label="—")
-            value.set_xalign(0)  # Left align
-            self.grid.attach(value, 1, i, 1, 1)
-            self.status_fields[field] = value
-
-        grid_box.append(self.grid)
-        self.append(grid_box)
-
-        # Button row
-        button_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
-        button_box.set_margin_top(12)
-
-        self.connect_btn = Gtk.Button(label="Connect")
+        # Connect signals
         self.connect_btn.connect("clicked", self.on_connect_clicked)
-        button_box.append(self.connect_btn)
-
-        self.disconnect_btn = Gtk.Button(label="Disconnect")
         self.disconnect_btn.connect("clicked", self.on_disconnect_clicked)
-        button_box.append(self.disconnect_btn)
-
-        self.reconnect_btn = Gtk.Button(label="Reconnect")
         self.reconnect_btn.connect("clicked", self.on_reconnect_clicked)
-        button_box.append(self.reconnect_btn)
-
-        self.append(button_box)
 
     def apply_status(self, status):
         """Apply pre-fetched status to UI (called from polling thread via idle_add)."""
@@ -157,6 +120,7 @@ class StatusPane(Gtk.Box):
             GLib.idle_add(self.on_disconnect_done, success, message, button)
 
         import threading
+
         thread = threading.Thread(target=worker, daemon=True)
         thread.start()
 
@@ -182,6 +146,7 @@ class StatusPane(Gtk.Box):
             GLib.idle_add(self.on_reconnect_done, success, message, button)
 
         import threading
+
         thread = threading.Thread(target=worker, daemon=True)
         thread.start()
 

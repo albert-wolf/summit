@@ -1,88 +1,30 @@
 import gi
-gi.require_version('Gtk', '4.0')
+
+gi.require_version("Gtk", "4.0")
 from gi.repository import Gtk, GLib
 from summit_manager import SummitManager
 
 
+@Gtk.Template(resource_path="/io/github/summit/ui/meshnet_pane.ui")
 class MeshnetPane(Gtk.Box):
     """Tab 5: Meshnet Management with 3-pane layout"""
 
+    __gtype_name__ = "MeshnetPane"
+
+    meshnet_switch = Gtk.Template.Child()
+    this_device_list = Gtk.Template.Child()
+    connected_peers_list = Gtk.Template.Child()
+    disconnected_peers_list = Gtk.Template.Child()
+
     def __init__(self, manager: SummitManager):
-        super().__init__(orientation=Gtk.Orientation.VERTICAL, spacing=12)
-        self.set_margin_top(12)
-        self.set_margin_bottom(12)
-        self.set_margin_start(12)
-        self.set_margin_end(12)
+        super().__init__()
 
         self.manager = manager
         self.meshnet_enabled = False
         self.initializing = True
 
-        # Meshnet toggle row
-        toggle_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
-        toggle_row.set_hexpand(True)
-
-        toggle_label = Gtk.Label(label="Meshnet", xalign=0)
-        toggle_label.add_css_class("heading")
-        toggle_label.set_hexpand(True)
-        toggle_row.append(toggle_label)
-
-        self.meshnet_switch = Gtk.Switch()
-        self.meshnet_switch.set_valign(Gtk.Align.CENTER)
-        self.meshnet_switch.connect("notify::active", self.on_meshnet_toggled)
-        toggle_row.append(self.meshnet_switch)
-
-        self.append(toggle_row)
-
-        # Scrollable container for 3 panes
-        scrolled = Gtk.ScrolledWindow()
-        scrolled.set_vexpand(True)
-        scrolled.set_hexpand(True)
-
-        panes_container = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
-        panes_container.set_margin_top(12)
-
-        # Pane 1: This Device (with info displayed directly, not in listbox)
-        self.device_pane = self.create_pane("This Device")
-        self.device_info_label = Gtk.Label(label="Local Device", xalign=0, wrap=True)
-        self.device_info_label.set_wrap_mode(1)  # Word wrap
-        self.device_pane.append(self.device_info_label)
-        panes_container.append(self.device_pane)
-
-        # Pane 2: Connected Devices
-        self.connected_pane = self.create_pane("Connected Devices")
-        self.connected_list = Gtk.ListBox()
-        self.connected_list.set_selection_mode(Gtk.SelectionMode.NONE)
-        self.connected_pane.append(self.connected_list)
-        panes_container.append(self.connected_pane)
-
-        # Pane 3: Disconnected Devices
-        self.disconnected_pane = self.create_pane("Disconnected Devices")
-        self.disconnected_list = Gtk.ListBox()
-        self.disconnected_list.set_selection_mode(Gtk.SelectionMode.NONE)
-        self.disconnected_pane.append(self.disconnected_list)
-        panes_container.append(self.disconnected_pane)
-
-        scrolled.set_child(panes_container)
-        self.append(scrolled)
-
         # Load initial state asynchronously to avoid blocking main thread on startup
         self.load_meshnet_state_async()
-
-    def create_pane(self, title: str) -> Gtk.Box:
-        """Create a styled pane with title and border."""
-        pane = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
-        pane.set_margin_top(8)
-        pane.set_margin_bottom(8)
-        pane.set_margin_start(8)
-        pane.set_margin_end(8)
-        pane.add_css_class("pane-box")
-
-        title_label = Gtk.Label(label=title)
-        title_label.add_css_class("heading")
-        pane.append(title_label)
-
-        return pane
 
     def load_meshnet_state(self):
         """Load meshnet state synchronously."""
@@ -99,9 +41,11 @@ class MeshnetPane(Gtk.Box):
 
     def load_meshnet_state_async(self):
         """Load meshnet state in background thread to avoid blocking startup."""
+
         def worker():
             try:
                 import time
+
                 # Wait a bit to let UI settle after window appears
                 time.sleep(0.3)
 
@@ -114,12 +58,13 @@ class MeshnetPane(Gtk.Box):
                     enabled, peers = False, []
 
                 GLib.idle_add(self.apply_meshnet_state, enabled, peers)
-                GLib.idle_add(lambda: setattr(self, 'initializing', False))
+                GLib.idle_add(lambda: setattr(self, "initializing", False))
             except Exception as e:
                 print(f"[ERROR] Failed to load meshnet state: {e}")
-                GLib.idle_add(lambda: setattr(self, 'initializing', False))
+                GLib.idle_add(lambda: setattr(self, "initializing", False))
 
         import threading
+
         thread = threading.Thread(target=worker, daemon=True)
         thread.start()
 
@@ -133,19 +78,26 @@ class MeshnetPane(Gtk.Box):
         self.meshnet_switch.set_active(enabled)
         self.initializing = old_initializing
 
-        # Show/hide panes based on meshnet state
-        self.device_pane.set_visible(enabled)
-        self.connected_pane.set_visible(enabled)
-        self.disconnected_pane.set_visible(enabled)
+        # Show/hide peer lists based on meshnet state
+        # In the new layout, we might want to keep the containers visible but empty,
+        # or hide them. The original code hid the whole panes.
+        # Since they are in a homogeneous box, hiding them might look weird or good.
+        # For now, let's keep them visible but they will be populated if enabled.
 
         if enabled:
             self.populate_meshnet_data(peers)
+        else:
+            self.this_device_list.remove_all()
+            self.connected_peers_list.remove_all()
+            self.disconnected_peers_list.remove_all()
 
     def populate_meshnet_data(self, peers):
         """Populate the 3 panes with device and peer data."""
         # Update This Device section
         device_info = self.manager.get_this_device_info()
         local_device_name = None
+
+        self.this_device_list.remove_all()
 
         if device_info:
             # Extract local device name from "Hostname: ..." line
@@ -158,15 +110,25 @@ class MeshnetPane(Gtk.Box):
                         local_device_name = hostname
                     break
 
-            device_text = device_info
-            self.device_info_label.set_label(device_text)
+            row = Gtk.ListBoxRow()
+            label = Gtk.Label(label=device_info, xalign=0, wrap=True)
+            label.set_wrap_mode(1)  # Word wrap
+            label.set_margin_top(4)
+            label.set_margin_bottom(4)
+            label.set_margin_start(4)
+            label.set_margin_end(4)
+            row.set_child(label)
+            self.this_device_list.append(row)
         else:
-            # Fallback if info not available
-            self.device_info_label.set_label("Local Device")
+            row = Gtk.ListBoxRow()
+            label = Gtk.Label(label="Local device info unavailable", xalign=0)
+            label.add_css_class("dim-label")
+            row.set_child(label)
+            self.this_device_list.append(row)
 
         # Clear peer lists
-        self.connected_list.remove_all()
-        self.disconnected_list.remove_all()
+        self.connected_peers_list.remove_all()
+        self.disconnected_peers_list.remove_all()
 
         # Categorize peers as connected or disconnected
         connected_count = 0
@@ -184,6 +146,10 @@ class MeshnetPane(Gtk.Box):
 
                 row = Gtk.ListBoxRow()
                 row_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+                row_box.set_margin_top(4)
+                row_box.set_margin_bottom(4)
+                row_box.set_margin_start(4)
+                row_box.set_margin_end(4)
 
                 peer_label = Gtk.Label(label=name, xalign=0)
                 row_box.append(peer_label)
@@ -200,10 +166,10 @@ class MeshnetPane(Gtk.Box):
                 is_connected = status == "connected" or status == "online"
 
                 if is_connected:
-                    self.connected_list.append(row)
+                    self.connected_peers_list.append(row)
                     connected_count += 1
                 else:
-                    self.disconnected_list.append(row)
+                    self.disconnected_peers_list.append(row)
                     disconnected_count += 1
 
         # Show empty states if no devices
@@ -211,16 +177,25 @@ class MeshnetPane(Gtk.Box):
             connected_row = Gtk.ListBoxRow()
             empty_label = Gtk.Label(label="No connected devices", xalign=0)
             empty_label.add_css_class("dim-label")
+            empty_label.set_margin_top(4)
+            empty_label.set_margin_bottom(4)
+            empty_label.set_margin_start(4)
+            empty_label.set_margin_end(4)
             connected_row.set_child(empty_label)
-            self.connected_list.append(connected_row)
+            self.connected_peers_list.append(connected_row)
 
         if disconnected_count == 0:
             disconnected_row = Gtk.ListBoxRow()
             empty_label = Gtk.Label(label="No disconnected devices", xalign=0)
             empty_label.add_css_class("dim-label")
+            empty_label.set_margin_top(4)
+            empty_label.set_margin_bottom(4)
+            empty_label.set_margin_start(4)
+            empty_label.set_margin_end(4)
             disconnected_row.set_child(empty_label)
-            self.disconnected_list.append(disconnected_row)
+            self.disconnected_peers_list.append(disconnected_row)
 
+    @Gtk.Template.Callback()
     def on_meshnet_toggled(self, switch, pspec):
         """Handle meshnet toggle."""
         if self.initializing:
@@ -234,6 +209,7 @@ class MeshnetPane(Gtk.Box):
             GLib.idle_add(self.on_meshnet_done, success, enabled, switch)
 
         import threading
+
         thread = threading.Thread(target=worker, daemon=True)
         thread.start()
 
@@ -243,16 +219,16 @@ class MeshnetPane(Gtk.Box):
 
         if success:
             self.meshnet_enabled = enabled
-            self.device_pane.set_visible(enabled)
-            self.connected_pane.set_visible(enabled)
-            self.disconnected_pane.set_visible(enabled)
+            # We don't hide panes anymore as they are part of the template's layout
+            # but we could hide the whole horizontal box if needed.
+            # For now, just populate or clear.
 
             if enabled:
                 self.load_meshnet_peers()
             else:
-                self.device_list.remove_all()
-                self.connected_list.remove_all()
-                self.disconnected_list.remove_all()
+                self.this_device_list.remove_all()
+                self.connected_peers_list.remove_all()
+                self.disconnected_peers_list.remove_all()
         else:
             # Revert switch on failure
             switch.set_active(not enabled)
@@ -261,10 +237,12 @@ class MeshnetPane(Gtk.Box):
 
     def load_meshnet_peers(self):
         """Load peers when meshnet is enabled."""
+
         def worker():
             enabled, peers = self.manager.get_meshnet_peers()
             GLib.idle_add(self.populate_meshnet_data, peers)
 
         import threading
+
         thread = threading.Thread(target=worker, daemon=True)
         thread.start()

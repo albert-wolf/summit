@@ -1,0 +1,153 @@
+using Gtk 4.0;
+
+template SettingsPane : Gtk.Box {
+  orientation: vertical;
+  spacing: 12;
+  margin-top: 12;
+  margin-bottom: 12;
+  margin-start: 12;
+  margin-end: 12;
+
+  ScrolledWindow {
+    vexpand: true;
+    hexpand: true;
+    styles ["pane-box"]
+
+    Box {
+      orientation: vertical;
+      spacing: 12;
+      margin-top: 12;
+      margin-bottom: 12;
+      margin-start: 12;
+      margin-end: 12;
+
+      Box {
+        spacing: 12;
+        Label {
+          label: "Kill Switch";
+          hexpand: true;
+          xalign: 0;
+        }
+        Switch killswitch_switch {
+          valign: center;
+        }
+      }
+
+      Box {
+        spacing: 12;
+        Label {
+          label: "Firewall";
+          hexpand: true;
+          xalign: 0;
+        }
+        Switch firewall_switch {
+          valign: center;
+        }
+      }
+
+      Box {
+        spacing: 12;
+        Label {
+          label: "Auto-connect";
+          hexpand: true;
+          xalign: 0;
+        }
+        Switch autoconnect_switch {
+          valign: center;
+        }
+      }
+
+      Box {
+        spacing: 12;
+        Label {
+          label: "LAN Discovery";
+          hexpand: true;
+          xalign: 0;
+        }
+        Switch lan_discovery_switch {
+          valign: center;
+        }
+      }
+
+      Box {
+        spacing: 12;
+        Label {
+          label: "Virtual Location";
+          hexpand: true;
+          xalign: 0;
+        }
+        Switch virtual_location_switch {
+          valign: center;
+        }
+      }
+
+      Box {
+        spacing: 12;
+        Label {
+          label: "Threat Protection Lite";
+          hexpand: true;
+          xalign: 0;
+        }
+        Switch threat_protection_lite_switch {
+          valign: center;
+        }
+      }
+
+      Box {
+        spacing: 12;
+        Label {
+          label: "Obfuscate";
+          hexpand: true;
+          xalign: 0;
+        }
+        Switch obfuscate_switch {
+          valign: center;
+        }
+      }
+
+      Box {
+        spacing: 12;
+        Label {
+          label: "Notify";
+          hexpand: true;
+          xalign: 0;
+        }
+        Switch notify_switch {
+          valign: center;
+        }
+      }
+
+      Box {
+        spacing: 12;
+        Label {
+          label: "Meshnet";
+          hexpand: true;
+          xalign: 0;
+        }
+        Switch meshnet_switch {
+          valign: center;
+        }
+      }
+
+      Box {
+        spacing: 12;
+        Label {
+          label: "Technology";
+          hexpand: true;
+          xalign: 0;
+        }
+        ComboBoxText technology_dropdown {}
+      }
+
+      Box {
+        spacing: 12;
+        Label {
+          label: "Protocol";
+          hexpand: true;
+          xalign: 0;
+        }
+        ComboBoxText protocol_dropdown {}
+      }
+    }
+  }
+}

@@ -1,6 +1,5 @@
 import subprocess
 import shutil
-from pathlib import Path
 from typing import Tuple, List, Dict, Optional
 
 
@@ -20,10 +19,7 @@ class SummitManager:
         """Run nordvpn command, return (stdout, stderr, returncode)."""
         try:
             result = subprocess.run(
-                [self.nord_path] + args,
-                capture_output=True,
-                text=True,
-                timeout=10
+                [self.nord_path] + args, capture_output=True, text=True, timeout=10
             )
             return result.stdout, result.stderr, result.returncode
         except subprocess.TimeoutExpired:
@@ -43,19 +39,19 @@ class SummitManager:
         current_key = None
         for line in text.splitlines():
             # Check for key: value format (with or without space after colon)
-            if ':' in line and not line.startswith(' '):
-                if ': ' in line:
-                    key, _, value = line.partition(': ')
+            if ":" in line and not line.startswith(" "):
+                if ": " in line:
+                    key, _, value = line.partition(": ")
                     result[key.strip()] = value.strip()
                 else:
                     # Handle lines like "Allowlisted ports:" with no value
-                    key = line.rstrip(':').strip()
+                    key = line.rstrip(":").strip()
                     result[key] = ""
                 current_key = key.strip()
-            elif line.startswith(' ') and current_key == 'Allowlisted ports':
+            elif line.startswith(" ") and current_key == "Allowlisted ports":
                 port = line.strip()
                 if port:
-                    result.setdefault('allowlisted_ports', []).append(port)
+                    result.setdefault("allowlisted_ports", []).append(port)
         return result
 
     def is_installed(self) -> bool:

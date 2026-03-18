@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gresources>
+  <gresource prefix="/io/github/summit">
+    <file preprocess="xml-stripblanks">ui/status_pane.ui</file>
+    <file preprocess="xml-stripblanks">ui/servers_pane.ui</file>
+    <file preprocess="xml-stripblanks">ui/settings_pane.ui</file>
+    <file preprocess="xml-stripblanks">ui/ports_pane.ui</file>
+    <file preprocess="xml-stripblanks">ui/meshnet_pane.ui</file>
+    <file preprocess="xml-stripblanks">ui/main_window.ui</file>
+    <file>resources/style.css</file>
+  </gresource>
+</gresources>

@@ -1,0 +1,104 @@
+using Gtk 4.0;
+
+template $SummitWindow : Gtk.ApplicationWindow {
+  default-width: 900;
+  default-height: 650;
+  title: "Summit";
+
+  Box {
+    orientation: horizontal;
+
+    Box recent_pane {
+      width-request: 250;
+    }
+
+    Separator {
+      orientation: vertical;
+    }
+
+    Box {
+      orientation: vertical;
+      hexpand: true;
+
+      HeaderBar header_bar {
+        [start]
+        Label {
+          label: "Summit";
+          styles ["app-title"]
+        }
+
+        [start]
+        Box {
+          styles ["tab-button-group"]
+
+          ToggleButton status_btn {
+            label: "Status";
+            active: true;
+            styles ["tab-button", "first-tab"]
+          }
+
+          ToggleButton servers_btn {
+            label: "Servers";
+            styles ["tab-button"]
+          }
+
+          ToggleButton settings_btn {
+            label: "Settings";
+            styles ["tab-button"]
+          }
+
+          ToggleButton ports_btn {
+            label: "Ports";
+            styles ["tab-button"]
+          }
+
+          ToggleButton meshnet_btn {
+            label: "Meshnet";
+            styles ["tab-button", "last-tab"]
+          }
+        }
+
+        [end]
+        MenuButton {
+          icon-name: "open-menu-symbolic";
+          menu-model: primary_menu;
+        }
+      }
+
+      Stack stack {
+        vexpand: true;
+        transition-type: crossfade;
+
+        Box status_pane {
+          name: "status";
+        }
+
+        Box servers_pane {
+          name: "servers";
+        }
+
+        Box settings_pane {
+          name: "settings";
+        }
+
+        Box ports_pane {
+          name: "ports";
+        }
+
+        Box meshnet_pane {
+          name: "meshnet";
+        }
+      }
+
+      Overlay toast_overlay {
+      }
+    }
+  }
+}
+
+menu primary_menu {
+  section {
+    item ("_Quit", "app.quit")
+    item ("_About", "app.about")
+  }
+}

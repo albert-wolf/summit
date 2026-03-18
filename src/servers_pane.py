@@ -1,18 +1,25 @@
 import gi
-gi.require_version('Gtk', '4.0')
+
+gi.require_version("Gtk", "4.0")
 from gi.repository import Gtk, GLib
 from summit_manager import SummitManager
 
 
+@Gtk.Template(resource_path="/io/github/summit/ui/servers_pane.ui")
 class ServersPane(Gtk.Box):
     """Tab 2: Country and City Selection"""
 
+    __gtype_name__ = "ServersPane"
+
+    search_entry = Gtk.Template.Child()
+    country_list = Gtk.Template.Child()
+    city_list = Gtk.Template.Child()
+    favorite_btn = Gtk.Template.Child()
+    connect_btn = Gtk.Template.Child()
+    country_scrolled = Gtk.Template.Child()
+
     def __init__(self, manager: SummitManager):
-        super().__init__(orientation=Gtk.Orientation.VERTICAL, spacing=12)
-        self.set_margin_top(12)
-        self.set_margin_bottom(12)
-        self.set_margin_start(12)
-        self.set_margin_end(12)
+        super().__init__()
 
         self.manager = manager
         self.selected_country = None
@@ -23,105 +30,10 @@ class ServersPane(Gtk.Box):
         self.city_to_countries = {}  # Maps city name to list of countries
         self.app_ref = None
 
-        # Search bar
-        search_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
-        search_box.set_margin_bottom(8)
-
-        search_label = Gtk.Label(label="Search:")
-        search_label.set_size_request(60, -1)
-        search_box.append(search_label)
-
-        self.search_entry = Gtk.SearchEntry()
-        self.search_entry.set_placeholder_text("Filter countries & cities...")
-        self.search_entry.set_hexpand(True)
-        self.search_entry.connect("search-changed", self.on_search_changed)
-        search_box.append(self.search_entry)
-
-        self.append(search_box)
-
-        # Paned layout: countries on left, cities on right
-        paned_container = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
-        paned_container.add_css_class("pane-box")
-        paned_container.set_margin_top(8)
-        paned_container.set_margin_bottom(8)
-        paned_container.set_margin_start(8)
-        paned_container.set_margin_end(8)
-
-        self.paned = Gtk.Paned(orientation=Gtk.Orientation.HORIZONTAL)
-        self.paned.set_wide_handle(True)
-        self.paned.set_position(450)
-        self.paned.set_resize_start_child(True)
-        self.paned.set_resize_end_child(True)
-
-        # Left: Countries list
-        countries_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
-        countries_box.set_hexpand(True)
-        countries_box.set_vexpand(True)
-        countries_label = Gtk.Label(label="Countries")
-        countries_label.add_css_class("heading")
-        countries_box.append(countries_label)
-
-        self.countries_listbox = Gtk.ListBox()
-        self.countries_listbox.set_selection_mode(Gtk.SelectionMode.SINGLE)
-        self.countries_listbox.set_hexpand(True)
-        self.countries_listbox.set_vexpand(True)
-        self._country_selected_handler_id = self.countries_listbox.connect("row-selected", self.on_country_selected)
-
-        self.countries_scrolled = Gtk.ScrolledWindow()
-        self.countries_scrolled.set_child(self.countries_listbox)
-        self.countries_scrolled.set_vexpand(True)
-        self.countries_scrolled.set_hexpand(True)
-        countries_box.append(self.countries_scrolled)
-
-        self.paned.set_start_child(countries_box)
-
-        # Right: Cities list
-        cities_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
-        cities_box.set_hexpand(True)
-        cities_box.set_vexpand(True)
-        cities_label = Gtk.Label(label="Cities")
-        cities_label.add_css_class("heading")
-        cities_box.append(cities_label)
-
-        self.cities_listbox = Gtk.ListBox()
-        self.cities_listbox.set_selection_mode(Gtk.SelectionMode.SINGLE)
-        self.cities_listbox.set_hexpand(True)
-        self.cities_listbox.set_vexpand(True)
-        self.cities_listbox.connect("row-selected", self.on_city_selected)
-
-        cities_scrolled = Gtk.ScrolledWindow()
-        cities_scrolled.set_child(self.cities_listbox)
-        cities_scrolled.set_vexpand(True)
-        cities_scrolled.set_hexpand(True)
-        cities_box.append(cities_scrolled)
-
-        # Favorite button
-        fav_button_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
-        fav_button_box.set_margin_top(8)
-
-        self.favorite_button = Gtk.Button(label="★ Add to Favorites")
-        self.favorite_button.set_sensitive(False)
-        self.favorite_button.connect("clicked", self.on_add_favorite_clicked)
-        fav_button_box.append(self.favorite_button)
-
-        cities_box.append(fav_button_box)
-
-        self.paned.set_end_child(cities_box)
-        self.paned.set_vexpand(True)
-        self.paned.set_hexpand(True)
-        paned_container.append(self.paned)
-        self.append(paned_container)
-
-        # Connect button
-        button_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
-        button_box.set_margin_top(12)
-
-        self.connect_btn = Gtk.Button(label="Connect to Selected")
-        self.connect_btn.connect("clicked", self.on_connect_clicked)
-        self.connect_btn.set_sensitive(False)
-        button_box.append(self.connect_btn)
-
-        self.append(button_box)
+        # Connect country_list manually to get the handler ID
+        self._country_selected_handler_id = self.country_list.connect(
+            "row-selected", self.on_country_selected
+        )
 
         # Try to load cached city_to_countries for instant startup
         cached_mapping = self.load_city_to_countries_from_cache()
@@ -139,6 +51,7 @@ class ServersPane(Gtk.Box):
         """Set reference to app for showing toasts."""
         self.app_ref = app
 
+    @Gtk.Template.Callback()
     def on_add_favorite_clicked(self, button):
         """Add current country/city selection to favorites."""
         if not self.selected_country or not self.selected_city:
@@ -164,24 +77,28 @@ class ServersPane(Gtk.Box):
             self.app_ref.show_toast(f"Added to favorites: {self.selected_city}")
 
         # Notify sidebar to refresh
-        if hasattr(self.app_ref, 'recent_pane'):
+        if hasattr(self.app_ref, "recent_pane"):
             self.app_ref.recent_pane.refresh_favorites_display()
 
     def load_countries(self):
         """Load countries list in background thread."""
+
         def worker():
             countries = self.manager.get_countries()
             GLib.idle_add(self.on_countries_loaded, countries)
 
         import threading
+
         thread = threading.Thread(target=worker, daemon=True)
         thread.start()
 
     def load_all_cities(self):
         """Load all cities from all countries in parallel for searching."""
+
         def worker():
             try:
                 import time
+
                 # Wait a bit to let UI settle after window appears
                 time.sleep(0.5)
 
@@ -191,8 +108,12 @@ class ServersPane(Gtk.Box):
 
                 # Load cities in parallel (max 4 concurrent requests to avoid daemon socket saturation)
                 import concurrent.futures
+
                 with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
-                    futures = {executor.submit(self.manager.get_cities, country): country for country in countries}
+                    futures = {
+                        executor.submit(self.manager.get_cities, country): country
+                        for country in countries
+                    }
                     for future in concurrent.futures.as_completed(futures):
                         try:
                             country = futures[future]
@@ -222,14 +143,20 @@ class ServersPane(Gtk.Box):
                 if self.search_text:
                     GLib.idle_add(self.refresh_countries_display)
                     GLib.idle_add(self.refresh_cities_display)
-                    GLib.idle_add(lambda: self.select_countries_by_name(self.get_countries_for_search_results()))
+                    GLib.idle_add(
+                        lambda: self.select_countries_by_name(
+                            self.get_countries_for_search_results()
+                        )
+                    )
             except Exception as e:
                 print(f"[ERROR] Failed to load all cities: {e}")
 
         import threading
+
         thread = threading.Thread(target=worker, daemon=True)
         thread.start()
 
+    @Gtk.Template.Callback()
     def on_search_changed(self, search_entry):
         """Filter countries and cities by search text."""
         self.search_text = search_entry.get_text().lower()
@@ -241,17 +168,17 @@ class ServersPane(Gtk.Box):
 
     def refresh_countries_display(self):
         """Always show all countries. Search does not filter this list."""
-        self.countries_listbox.remove_all()
+        self.country_list.remove_all()
         for country in self.all_countries:
             row = Gtk.ListBoxRow()
             label = Gtk.Label(label=country, xalign=0)
             label.set_hexpand(True)
             row.set_child(label)
-            self.countries_listbox.append(row)
+            self.country_list.append(row)
 
     def refresh_cities_display(self):
         """Refresh city list based on search."""
-        self.cities_listbox.remove_all()
+        self.city_list.remove_all()
 
         # When searching, show all matching cities; when not searching, show cities from selected country
         if self.search_text:
@@ -262,7 +189,7 @@ class ServersPane(Gtk.Box):
                     label = Gtk.Label(label=city, xalign=0)
                     label.set_hexpand(True)
                     row.set_child(label)
-                    self.cities_listbox.append(row)
+                    self.city_list.append(row)
         elif self.selected_country:
             # Normal mode: show cities from selected country
             for city in self.all_cities:
@@ -270,7 +197,7 @@ class ServersPane(Gtk.Box):
                 label = Gtk.Label(label=city, xalign=0)
                 label.set_hexpand(True)
                 row.set_child(label)
-                self.cities_listbox.append(row)
+                self.city_list.append(row)
 
     def select_countries_by_name(self, country_names):
         """Select multiple countries in the listbox without triggering row-selected signal.
@@ -279,19 +206,19 @@ class ServersPane(Gtk.Box):
             country_names: List of country names to select
         """
         if not country_names:
-            self.countries_listbox.unselect_all()
+            self.country_list.unselect_all()
             return
 
         country_names_lower = [name.lower() for name in country_names]
 
         # Block the row-selected signal to prevent on_country_selected from clearing search
-        self.countries_listbox.handler_block(self._country_selected_handler_id)
+        self.country_list.handler_block(self._country_selected_handler_id)
 
         first_match_row = None
         try:
             row_index = 0
             while True:
-                row = self.countries_listbox.get_row_at_index(row_index)
+                row = self.country_list.get_row_at_index(row_index)
                 if not row:
                     break
 
@@ -299,21 +226,23 @@ class ServersPane(Gtk.Box):
                 if isinstance(label, Gtk.Label):
                     country = label.get_label().lower()
                     if country in country_names_lower:
-                        self.countries_listbox.select_row(row)
+                        self.country_list.select_row(row)
                         if first_match_row is None:
                             first_match_row = row
                 row_index += 1
         finally:
-            self.countries_listbox.handler_unblock(self._country_selected_handler_id)
+            self.country_list.handler_unblock(self._country_selected_handler_id)
 
         # Scroll to first matched country so user can see the highlight (without stealing focus)
         if first_match_row:
+
             def scroll_to_row():
                 alloc = first_match_row.get_allocation()
-                vadj = self.countries_scrolled.get_vadjustment()
+                vadj = self.country_scrolled.get_vadjustment()
                 if alloc.height > 0:
                     vadj.set_value(max(0, alloc.y - alloc.height))
                 return False
+
             GLib.idle_add(scroll_to_row)
 
     def get_countries_for_search_results(self):
@@ -337,7 +266,9 @@ class ServersPane(Gtk.Box):
             return sorted(list(countries))
         else:
             # Step 3: If no cities match, find matching countries
-            matching_countries = [country for country in self.all_countries if self.search_text in country.lower()]
+            matching_countries = [
+                country for country in self.all_countries if self.search_text in country.lower()
+            ]
             return matching_countries
 
     def on_countries_loaded(self, countries):
@@ -356,22 +287,24 @@ class ServersPane(Gtk.Box):
             country_label = row.get_child()
             self.selected_country = country_label.get_label()
             self.selected_city = None
-            self.cities_listbox.remove_all()
+            self.city_list.remove_all()
             self.load_cities(self.selected_country)
             self.connect_btn.set_sensitive(True)
         else:
             self.selected_country = None
             self.selected_city = None
-            self.cities_listbox.remove_all()
+            self.city_list.remove_all()
             self.connect_btn.set_sensitive(False)
 
     def load_cities(self, country):
         """Load cities for selected country."""
+
         def worker():
             cities = self.manager.get_cities(country)
             GLib.idle_add(self.on_cities_loaded, cities)
 
         import threading
+
         thread = threading.Thread(target=worker, daemon=True)
         thread.start()
 
@@ -392,7 +325,7 @@ class ServersPane(Gtk.Box):
             return None
 
         try:
-            with open(cache_path, 'r') as f:
+            with open(cache_path, "r") as f:
                 data = json.load(f)
                 if data.get("version") == 1:
                     return data.get("city_to_countries", {})
@@ -417,21 +350,22 @@ class ServersPane(Gtk.Box):
         cache_data = {
             "version": 1,
             "city_to_countries": city_to_countries,
-            "last_updated": datetime.utcnow().isoformat() + "Z"
+            "last_updated": datetime.utcnow().isoformat() + "Z",
         }
 
         try:
-            with open(cache_path, 'w') as f:
+            with open(cache_path, "w") as f:
                 json.dump(cache_data, f, indent=2)
         except Exception as e:
             print(f"[WARNING] Failed to save cache: {e}")
 
+    @Gtk.Template.Callback()
     def on_city_selected(self, listbox, row):
         """Update selected city. In search mode, also derive the country from the mapping."""
         if row:
             city_label = row.get_child()
             self.selected_city = city_label.get_label()
-            self.favorite_button.set_sensitive(True)
+            self.favorite_btn.set_sensitive(True)
             self.connect_btn.set_sensitive(True)
 
             # In search mode, selected_country may not be set — derive it from the mapping
@@ -441,7 +375,7 @@ class ServersPane(Gtk.Box):
                     self.selected_country = countries[0]
         else:
             self.selected_city = None
-            self.favorite_button.set_sensitive(False)
+            self.favorite_btn.set_sensitive(False)
 
     def _do_connect(self, country, city=None):
         """Shared connection logic for button and double-click handlers.
@@ -460,9 +394,11 @@ class ServersPane(Gtk.Box):
             GLib.idle_add(self.on_connect_done, success, message, self.connect_btn)
 
         import threading
+
         thread = threading.Thread(target=worker, daemon=True)
         thread.start()
 
+    @Gtk.Template.Callback()
     def on_connect_clicked(self, button):
         """Connect to selected country/city."""
         self._do_connect(self.selected_country, self.selected_city)
@@ -472,4 +408,3 @@ class ServersPane(Gtk.Box):
         button.set_sensitive(True)
         button.set_label("Connect to Selected")
         return False
-

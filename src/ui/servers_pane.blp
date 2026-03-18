@@ -1,0 +1,65 @@
+using Gtk 4.0;
+
+template ServersPane : Gtk.Box {
+  orientation: vertical;
+  spacing: 12;
+  margin-top: 12;
+  margin-bottom: 12;
+  margin-start: 12;
+  margin-end: 12;
+
+  Gtk.SearchEntry search_entry {
+    margin-top: 8;
+    margin-bottom: 8;
+    margin-start: 8;
+    margin-end: 8;
+    placeholder-text: _("Filter countries & cities...");
+    search-changed => $on_search_changed();
+  }
+
+  Gtk.Box {
+    orientation: horizontal;
+    spacing: 12;
+    vexpand: true;
+
+    Gtk.ScrolledWindow country_scrolled {
+      vexpand: true;
+      hexpand: true;
+      styles ["pane-box"]
+
+      Gtk.ListBox country_list {
+        selection-mode: single;
+      }
+    }
+
+    Gtk.ScrolledWindow city_scrolled {
+      vexpand: true;
+      hexpand: true;
+      styles ["pane-box"]
+
+      Gtk.ListBox city_list {
+        selection-mode: single;
+        row-selected => $on_city_selected();
+      }
+    }
+  }
+
+  Gtk.Box {
+    orientation: horizontal;
+    spacing: 12;
+    margin-top: 8;
+
+    Gtk.Button favorite_btn {
+      label: _("★ Add to Favorites");
+      sensitive: false;
+      clicked => $on_add_favorite_clicked();
+    }
+
+    Gtk.Button connect_btn {
+      label: _("Connect to Selected");
+      sensitive: false;
+      clicked => $on_connect_clicked();
+      hexpand: true;
+    }
+  }
+}

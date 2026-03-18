@@ -1,0 +1,107 @@
+using Gtk 4.0;
+
+template $MeshnetPane : Gtk.Box {
+  orientation: vertical;
+  spacing: 12;
+  margin-top: 12;
+  margin-bottom: 12;
+  margin-start: 12;
+  margin-end: 12;
+
+  Gtk.Box {
+    orientation: horizontal;
+    spacing: 8;
+    hexpand: true;
+
+    Gtk.Label {
+      label: _("Meshnet");
+      styles ["heading"]
+      xalign: 0;
+      hexpand: true;
+    }
+
+    Gtk.Switch meshnet_switch {
+      valign: center;
+      notify::active => $on_meshnet_toggled();
+    }
+  }
+
+  Gtk.Box {
+    orientation: horizontal;
+    homogeneous: true;
+    spacing: 8;
+    vexpand: true;
+
+    Gtk.ScrolledWindow {
+      styles ["pane-box"]
+      hexpand: true;
+      vexpand: true;
+
+      Gtk.Box {
+        orientation: vertical;
+        spacing: 8;
+        margin-top: 8;
+        margin-bottom: 8;
+        margin-start: 8;
+        margin-end: 8;
+
+        Gtk.Label {
+          label: _("This Device");
+          styles ["heading"]
+        }
+
+        Gtk.ListBox this_device_list {
+          selection-mode: none;
+        }
+      }
+    }
+
+    Gtk.ScrolledWindow {
+      styles ["pane-box"]
+      hexpand: true;
+      vexpand: true;
+
+      Gtk.Box {
+        orientation: vertical;
+        spacing: 8;
+        margin-top: 8;
+        margin-bottom: 8;
+        margin-start: 8;
+        margin-end: 8;
+
+        Gtk.Label {
+          label: _("Connected Peers");
+          styles ["heading"]
+        }
+
+        Gtk.ListBox connected_peers_list {
+          selection-mode: none;
+        }
+      }
+    }
+
+    Gtk.ScrolledWindow {
+      styles ["pane-box"]
+      hexpand: true;
+      vexpand: true;
+
+      Gtk.Box {
+        orientation: vertical;
+        spacing: 8;
+        margin-top: 8;
+        margin-bottom: 8;
+        margin-start: 8;
+        margin-end: 8;
+
+        Gtk.Label {
+          label: _("Disconnected Peers");
+          styles ["heading"]
+        }
+
+        Gtk.ListBox disconnected_peers_list {
+          selection-mode: none;
+        }
+      }
+    }
+  }
+}
