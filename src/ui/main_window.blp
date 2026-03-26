@@ -5,20 +5,9 @@ template $SummitWindow : Gtk.ApplicationWindow {
   default-height: 650;
   title: "Summit";
 
-  Box {
-    orientation: horizontal;
-
-    Box recent_pane {
-      width-request: 250;
-    }
-
-    Separator {
-      orientation: vertical;
-    }
-
+  Overlay toast_overlay {
     Box {
       orientation: vertical;
-      hexpand: true;
 
       HeaderBar header_bar {
         [start]
@@ -65,32 +54,45 @@ template $SummitWindow : Gtk.ApplicationWindow {
         }
       }
 
-      Stack stack {
+      Paned content_paned {
+        orientation: horizontal;
+        wide-handle: true;
+        position: 550;
         vexpand: true;
-        transition-type: crossfade;
+        hexpand: true;
 
-        Box status_pane {
-          name: "status";
+        [start]
+        Stack main_stack {
+          vexpand: true;
+          hexpand: true;
+          transition-type: crossfade;
+
+          Box status_pane_box {
+            name: "status";
+          }
+
+          Box servers_pane_box {
+            name: "servers";
+          }
+
+          Box settings_pane_box {
+            name: "settings";
+          }
+
+          Box ports_pane_box {
+            name: "ports";
+          }
+
+          Box meshnet_pane_box {
+            name: "meshnet";
+          }
         }
 
-        Box servers_pane {
-          name: "servers";
+        [end]
+        Box recent_pane_container {
+          width-request: 250;
+          hexpand: false;
         }
-
-        Box settings_pane {
-          name: "settings";
-        }
-
-        Box ports_pane {
-          name: "ports";
-        }
-
-        Box meshnet_pane {
-          name: "meshnet";
-        }
-      }
-
-      Overlay toast_overlay {
       }
     }
   }

@@ -1,6 +1,9 @@
 import subprocess
 import shutil
+import logging
 from typing import Tuple, List, Dict, Optional
+
+logger = logging.getLogger(__name__)
 
 
 class SummitManager:

@@ -3,6 +3,46 @@ import sys
 import json
 import warnings
 import gi
+import logging
+import re
+from pathlib import Path
+
+# Configure Logging
+class SensitiveFilter(logging.Filter):
+    """Filter to mask sensitive info (IPs, emails) in logs."""
+    def filter(self, record):
+        if not isinstance(record.msg, str):
+            return True
+        # Mask IPv4
+        record.msg = re.sub(r'\b\d{1,3}(\.\d{1,3}){3}\b', '[IP_MASKED]', record.msg)
+        # Mask potential emails/account names
+        record.msg = re.sub(r'\b[\w\.-]+@[\w\.-]+\.\w{2,}\b', '[ACCOUNT_MASKED]', record.msg)
+        return True
+
+def setup_logging():
+    log_dir = Path.home() / ".cache" / "summit"
+    log_dir.mkdir(parents=True, exist_ok=True)
+    log_file = log_dir / "summit.log"
+
+    logger = logging.getLogger()
+    logger.setLevel(logging.INFO)
+
+    formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+
+    # Console Handler
+    ch = logging.StreamHandler()
+    ch.setFormatter(formatter)
+    ch.addFilter(SensitiveFilter())
+    logger.addHandler(ch)
+
+    # File Handler
+    fh = logging.FileHandler(log_file)
+    fh.setFormatter(formatter)
+    fh.addFilter(SensitiveFilter())
+    logger.addHandler(fh)
+
+setup_logging()
+logger = logging.getLogger(__name__)
 
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
@@ -11,15 +51,11 @@ gi.require_version("Gdk", "4.0")
 gi.require_version("Gio", "2.0")
 
 from gi.repository import Gtk, Gdk, Gio, GLib
-from pathlib import Path
-
 
 # Resource loading
 def register_resources():
-    # Try installed path first
     resource_file = Path("/usr/share/summit/resources/summit.gresource")
     if not resource_file.exists():
-        # Fallback to local path for development (relative to this file in src/)
         resource_file = Path(__file__).parent / "resources" / "summit.gresource"
 
     if resource_file.exists():
@@ -27,12 +63,9 @@ def register_resources():
             resource = Gio.Resource.load(str(resource_file))
             resource._register()
         except Exception as e:
-            print(f"Error loading resources: {e}")
+            logger.error(f"Error loading resources: {e}")
     else:
-        # If we are in the build directory, it might be in ../usr/share/summit/resources/
-        # but let's stick to these two for now.
-        print(f"Warning: Resource file not found: {resource_file}")
-
+        logger.warning(f"Resource file not found: {resource_file}")
 
 register_resources()
 
@@ -45,6 +78,73 @@ from meshnet_pane import MeshnetPane
 from recent_pane import RecentPane
 from toast import ToastOverlay
 
+@Gtk.Template(resource_path="/io/github/summit/ui/main_window.ui")
+class SummitWindow(Gtk.ApplicationWindow):
+    """Main application window using Gtk.Template."""
+
+    __gtype_name__ = "SummitWindow"
+
+    header_bar = Gtk.Template.Child()
+    main_stack = Gtk.Template.Child()
+    toast_overlay = Gtk.Template.Child()
+    content_paned = Gtk.Template.Child()
+    recent_pane_container = Gtk.Template.Child()
+
+    status_btn = Gtk.Template.Child()
+    servers_btn = Gtk.Template.Child()
+    settings_btn = Gtk.Template.Child()
+    ports_btn = Gtk.Template.Child()
+    meshnet_btn = Gtk.Template.Child()
+
+    def __init__(self, app, **kwargs):
+        super().__init__(application=app, **kwargs)
+        self.app = app
+        self._updating_tabs = False
+
+        self.tab_buttons = {
+            "status": self.status_btn,
+            "servers": self.servers_btn,
+            "settings": self.settings_btn,
+            "ports": self.ports_btn,
+            "meshnet": self.meshnet_btn,
+        }
+
+        for name, btn in self.tab_buttons.items():
+            btn.connect("toggled", self.on_tab_button_toggled, name)
+
+        # Initialize ToastOverlay functionality
+        self.toast_overlay.__class__ = ToastOverlay
+        ToastOverlay.__init__(self.toast_overlay)
+
+    def on_tab_button_toggled(self, button: Gtk.ToggleButton, tab_name: str):
+        if self._updating_tabs:
+            return
+
+        if button.get_active():
+            self._updating_tabs = True
+            try:
+                for name, btn in self.tab_buttons.items():
+                    if name != tab_name:
+                        btn.set_active(False)
+                self.main_stack.set_visible_child_name(tab_name)
+                self.update_right_pane_visibility()
+            finally:
+                self._updating_tabs = False
+        else:
+            self._updating_tabs = True
+            try:
+                button.set_active(True)
+            finally:
+                self._updating_tabs = False
+
+    def update_right_pane_visibility(self):
+        active_tab = self.main_stack.get_visible_child_name()
+        if active_tab == "status":
+            self.recent_pane_container.set_visible(True)
+            self.content_paned.set_position(550)
+        else:
+            self.recent_pane_container.set_visible(False)
+            self.content_paned.set_position(9999)
 
 class SummitApp(Gtk.Application):
     """Summit - NordVPN Client for GTK4 Application."""
@@ -55,9 +155,7 @@ class SummitApp(Gtk.Application):
         self.window = None
         self.config = {}
         self.poll_timer = None
-        self._updating_tabs = False
 
-        # Config path
         config_dir = Path.home() / ".config" / "summit"
         config_dir.mkdir(parents=True, exist_ok=True)
         self.config_file = config_dir / "config.json"
@@ -66,10 +164,8 @@ class SummitApp(Gtk.Application):
         self.connect("activate", self.on_activate)
 
     def do_startup(self, *args):
-        """Called during startup. Create window here."""
         Gtk.Application.do_startup(self)
 
-        # Load CSS provider
         css_provider = Gtk.CssProvider()
         css_provider.load_from_resource("/io/github/summit/resources/style.css")
         Gtk.StyleContext.add_provider_for_display(
@@ -81,498 +177,164 @@ class SummitApp(Gtk.Application):
         if not self.window:
             try:
                 self.load_config()
-
-                # Check nordvpn installed
                 if not self.manager.is_installed():
                     dialog = Gtk.AlertDialog()
                     dialog.set_message("NordVPN Not Installed")
-                    dialog.set_detail_text(
-                        "Please install NordVPN first:\nsudo apt install nordvpn"
-                    )
-                    dialog.present(self.window if self.window else None)
+                    dialog.set_detail_text("Please install NordVPN first:\nsudo apt install nordvpn")
+                    dialog.present(None)
                     self.quit()
                     return
 
                 self.build_window()
-
-                # Show window immediately - everything else happens in background via polling
                 self.window.present()
             except Exception as e:
-                print(f"[ERROR] Failed to build window: {e}")
-                import traceback
-
-                traceback.print_exc()
-
-    def check_login_status(self):
-        """Check if logged in asynchronously, show dialog if not (runs via idle_add)."""
-
-        def worker():
-            is_logged_in = self.manager.is_logged_in()
-            GLib.idle_add(self.show_login_dialog_if_needed, is_logged_in)
-
-        import threading
-
-        thread = threading.Thread(target=worker, daemon=True)
-        thread.start()
-        return False
-
-    def show_login_dialog_if_needed(self, is_logged_in):
-        """Show login dialog if not logged in (runs on main thread via idle_add)."""
-        if not is_logged_in:
-            dialog = Gtk.AlertDialog()
-            dialog.set_message("Not Logged In")
-            dialog.set_detail_text(
-                "Please log in to NordVPN first:\nRun 'nordvpn login' in a terminal"
-            )
-            dialog.present(self.window)
-        return False
-
-    def on_activate(self, app=None):
-        """Called when app is activated."""
-        if self.window:
-            self.window.present()
-            GLib.idle_add(self.restore_window_state)
-            GLib.idle_add(self.update_right_pane_visibility)  # Update visibility after window shows
-
-    def load_config(self):
-        """Load configuration with defaults."""
-        defaults = {
-            "window_width": 900,
-            "window_height": 650,
-            "last_country": "United_States",
-            "last_city": "Saint_Louis",
-            "poll_interval_ms": 2000,
-            "autoconnect_enabled": False,
-            "autoconnect_country": "",
-            "autoconnect_city": "",
-            "favorites": [],
-        }
-
-        if self.config_file.exists():
-            try:
-                with open(self.config_file, "r") as f:
-                    self.config = json.load(f)
-                    # Merge with defaults
-                    for key, val in defaults.items():
-                        if key not in self.config:
-                            self.config[key] = val
-            except Exception:
-                self.config = defaults
-        else:
-            self.config = defaults
-
-    def save_config(self):
-        """Save configuration to file."""
-        if self.window:
-            self.config["window_width"] = self.window.get_width()
-            self.config["window_height"] = self.window.get_height()
-
-        # Save auto-connect settings
-        if hasattr(self, "settings_pane"):
-            autoconnect_config = self.settings_pane.get_autoconnect_config()
-            self.config.update(autoconnect_config)
-
-        try:
-            with open(self.config_file, "w") as f:
-                json.dump(self.config, f, indent=2)
-        except Exception as e:
-            print(f"[ERROR] Failed to save config: {e}")
-
-    def show_toast(self, message: str, is_error: bool = False):
-        """Show a toast notification from any pane."""
-        if hasattr(self, "toast_overlay"):
-            self.toast_overlay.show_toast(message, is_error)
-
-    def get_is_dark_mode(self) -> bool:
-        """Detect if dark theme is active using GTK theme settings."""
-        # Check GTK theme settings
-        settings = Gtk.Settings.get_default()
-        if settings:
-            # First try the prefer-dark-theme setting
-            prefer_dark = settings.get_property("gtk-application-prefer-dark-theme")
-            if prefer_dark is not None:
-                return prefer_dark is True
-
-            # Try to detect from theme name
-            theme_name = settings.get_property("gtk-theme-name")
-            if theme_name:
-                # Check if theme name indicates dark mode
-                is_dark = "dark" in theme_name.lower()
-                return is_dark
-
-        # Default to light mode if detection fails (LMDE uses light themes by default)
-        return False
+                logging.error(f"Failed to build window: {e}", exc_info=True)
 
     def build_window(self):
-        """Build the main window."""
-        self.window = Gtk.ApplicationWindow(application=self)
-        self.window.set_title("Summit")
+        self.window = SummitWindow(app=self)
         self.window.set_default_size(
             self.config.get("window_width", 900), self.config.get("window_height", 650)
         )
         self.window.connect("close-request", self.on_window_close)
 
-        # Stack to replace notebook (for page switching)
-        self.stack = Gtk.Stack()
-        self.stack.set_hexpand(True)
-        self.stack.set_vexpand(True)
-        self.stack.set_transition_type(Gtk.StackTransitionType.CROSSFADE)
-
-        # Add panes to stack BEFORE creating HeaderBar
-        # (so panes exist when button activation fires)
-
-        # Tab 1: Status Pane
         self.status_pane = StatusPane(
             self.manager,
             on_status_change=self.on_status_change,
             on_connect_click=self.switch_to_servers_tab,
         )
         self.status_pane.set_app_ref(self)
-        self.stack.add_named(self.status_pane, "status")
 
-        # Tab 2: Servers Pane
         self.servers_pane = ServersPane(self.manager)
         self.servers_pane.set_app_ref(self)
-        self.stack.add_named(self.servers_pane, "servers")
 
-        # Tab 3: Settings Pane
         self.settings_pane = SettingsPane(self.manager)
-        self.stack.add_named(self.settings_pane, "settings")
-
-        # Load auto-connect state
         self.settings_pane.autoconnect_switch.set_active(
             self.config.get("autoconnect_enabled", False)
         )
 
-        # Populate auto-connect countries in background
-        def load_autoconnect_data():
-            countries = self.manager.get_countries()
-            saved_country = self.config.get("autoconnect_country", "")
-            saved_city = self.config.get("autoconnect_city", "")
-
-            def populate():
-                self.settings_pane.autoconnect_country_combo.remove_all()
-                self.settings_pane.autoconnect_country_combo.append("", "Select Country")
-                for country in countries:
-                    self.settings_pane.autoconnect_country_combo.append(country, country)
-
-                # Restore country selection
-                if saved_country:
-                    # saved_country is in underscore format (e.g., "United_States")
-                    # Combo was populated with countries from get_countries() which also use underscores
-
-                    # Block the signal handler to prevent it from loading cities asynchronously
-                    # while we're already loading them synchronously for restore
-                    self.settings_pane.autoconnect_country_combo.handler_block(
-                        self.settings_pane.autoconnect_country_handler_id
-                    )
-                    self.settings_pane.autoconnect_country_combo.set_active_id(saved_country)
-                    self.settings_pane.autoconnect_country_combo.handler_unblock(
-                        self.settings_pane.autoconnect_country_handler_id
-                    )
-
-                    # Now load cities for this country
-                    cities = self.manager.get_cities(saved_country)
-                    self.settings_pane.autoconnect_city_combo.remove_all()
-                    self.settings_pane.autoconnect_city_combo.append("", "Select City")
-                    for city in cities:
-                        self.settings_pane.autoconnect_city_combo.append(city, city)
-                    # Restore city selection
-                    if saved_city:
-                        self.settings_pane.autoconnect_city_combo.set_active_id(saved_city)
-
-            GLib.idle_add(populate)
-
-        import threading
-
-        thread = threading.Thread(target=load_autoconnect_data, daemon=True)
-        thread.start()
-
-        # Tab 4: Ports Pane
         self.ports_pane = PortsPane(self.manager)
-        self.stack.add_named(self.ports_pane, "ports")
-
-        # Tab 5: Meshnet Pane
         self.meshnet_pane = MeshnetPane(self.manager)
-        self.stack.add_named(self.meshnet_pane, "meshnet")
 
-        # HeaderBar with tab buttons - set as window titlebar
-        self.header_bar = self.build_headerbar()
-        self.window.set_titlebar(self.header_bar)
-
-        # Main box
-        main_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
-
-        # Horizontal paned: stack on left, recent connections on right
-        self.content_paned = Gtk.Paned(orientation=Gtk.Orientation.HORIZONTAL)
-        self.content_paned.set_wide_handle(True)
-        self.content_paned.set_position(550)
-
-        # Recent Connections Pane (created but only added to paned when on Status tab)
         self.recent_pane = RecentPane(self.manager)
         self.recent_pane.set_app_ref(self)
         self.recent_pane.refresh_favorites_display()
 
-        # Always start on Status tab for consistency and muscle memory
-        self.stack.set_visible_child_name("status")
+        self.window.main_stack.get_child_by_name("status").append(self.status_pane)
+        self.window.main_stack.get_child_by_name("servers").append(self.servers_pane)
+        self.window.main_stack.get_child_by_name("settings").append(self.settings_pane)
+        self.window.main_stack.get_child_by_name("ports").append(self.ports_pane)
+        self.window.main_stack.get_child_by_name("meshnet").append(self.meshnet_pane)
+        self.window.recent_pane_container.append(self.recent_pane)
 
-        self.content_paned.set_start_child(self.stack)
-
-        # Update visibility for the initial page
-        self.update_right_pane_visibility()
-
-        self.content_paned.set_vexpand(True)
-        self.content_paned.set_hexpand(True)
-        main_box.append(self.content_paned)
-
-        # Wrap main content with toast overlay
-        self.toast_overlay = ToastOverlay()
-        self.toast_overlay.set_child(main_box)
-        self.window.set_child(self.toast_overlay)
-
-        # Start polling (initial pane data loads in background after window shows)
+        self.load_autoconnect_background()
         self.start_polling()
-
-        # Check login status asynchronously after window appears
         GLib.idle_add(self.check_login_status)
 
-    def load_initial_pane_data(self):
-        """Load initial data for all panes in background after window shows."""
-        # Load settings asynchronously
-        if hasattr(self, "settings_pane"):
-            self.settings_pane.load_settings(synchronous=False)
-        # Load status for status pane
-        if hasattr(self, "status_pane"):
-            self.status_pane.update_status()
-        # Meshnet state is loaded in __init__ synchronously
-        # Load ports for ports pane
-        if hasattr(self, "ports_pane"):
-            self.ports_pane.load_ports()
+    def on_activate(self, app=None):
+        if self.window:
+            self.window.present()
 
-    def build_headerbar(self) -> Gtk.HeaderBar:
-        """Create HeaderBar with tab toggle buttons."""
-        header = Gtk.HeaderBar()
-        header.add_css_class("headerbar")
-        header.set_show_title_buttons(True)
-        header.set_title_widget(Gtk.Box())  # suppress centered default title
-
-        # Title label packed to the left
-        title_label = Gtk.Label(label="Summit")
-        title_label.add_css_class("app-title")
-        header.pack_start(title_label)
-
-        # Tab buttons in a box
-        tab_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=0)
-        tab_box.add_css_class("tab-button-group")
-
-        self.tab_buttons = {}
-        tabs = [
-            ("Status", "status"),
-            ("Servers", "servers"),
-            ("Settings", "settings"),
-            ("Ports", "ports"),
-            ("Meshnet", "meshnet"),
-        ]
-
-        for i, (label, name) in enumerate(tabs):
-            btn = Gtk.ToggleButton(label=label)
-            btn.add_css_class("tab-button")
-            if i == 0:
-                btn.add_css_class("first-tab")
-            if i == len(tabs) - 1:
-                btn.add_css_class("last-tab")
-
-            btn.connect("toggled", self.on_tab_button_toggled, name)
-            tab_box.append(btn)
-            self.tab_buttons[name] = btn
-
-        # Always set Status tab button as active
-        self.tab_buttons["status"].set_active(True)
-
-        header.pack_start(tab_box)
-
-        # Hamburger menu button (File, Help)
-        menu_button = Gtk.MenuButton()
-        menu_button.set_icon_name("open-menu-symbolic")
-        menu_button.set_tooltip_text("Menu")
-
-        # Create menu
-        menu = Gio.Menu()
-
-        # File menu
-        file_menu = Gio.Menu()
-        file_menu.append("_Quit", "app.quit")
-        menu.append_submenu("_File", file_menu)
-
-        # Help menu
-        help_menu = Gio.Menu()
-        help_menu.append("_About", "app.about")
-        menu.append_submenu("_Help", help_menu)
-
-        # Register actions
-        quit_action = Gio.SimpleAction.new("quit", None)
-        quit_action.connect("activate", lambda *args: self.quit())
-        self.add_action(quit_action)
-        self.set_accels_for_action("app.quit", ["<Control>q"])
-
-        about_action = Gio.SimpleAction.new("about", None)
-        about_action.connect("activate", lambda *args: self.show_about())
-        self.add_action(about_action)
-
-        # Set menu on button
-        menu_button.set_menu_model(menu)
-        header.pack_end(menu_button)
-
-        return header
-
-    def on_tab_button_toggled(self, button: Gtk.ToggleButton, tab_name: str):
-        """Handle tab button toggle."""
-        # Prevent infinite recursion when updating tab buttons
-        if self._updating_tabs:
-            return
-
-        if button.get_active():
-            self._updating_tabs = True
-            try:
-                # Deactivate all other buttons
-                for name, btn in self.tab_buttons.items():
-                    if name != tab_name:
-                        btn.set_active(False)
-
-                # Switch to the new tab
-                self.stack.set_visible_child_name(tab_name)
-                self.update_right_pane_visibility()
-            finally:
-                self._updating_tabs = False
-        else:
-            # Prevent deactivating the active button
-            self._updating_tabs = True
-            try:
-                button.set_active(True)
-            finally:
-                self._updating_tabs = False
-
-    def build_menubar(self) -> Gtk.PopoverMenuBar:
-        """Create application menu."""
-        menu = Gio.Menu()
-
-        # File menu
-        file_menu = Gio.Menu()
-        file_menu.append("_Quit", "app.quit")
-        menu.append_submenu("_File", file_menu)
-
-        # Help menu
-        help_menu = Gio.Menu()
-        help_menu.append("_About", "app.about")
-        menu.append_submenu("_Help", help_menu)
-
-        # Register actions
-        quit_action = Gio.SimpleAction.new("quit", None)
-        quit_action.connect("activate", lambda *args: self.quit())
-        self.add_action(quit_action)
-        self.set_accels_for_action("app.quit", ["<Control>q"])
-
-        about_action = Gio.SimpleAction.new("about", None)
-        about_action.connect("activate", lambda *args: self.show_about())
-        self.add_action(about_action)
-
-        return Gtk.PopoverMenuBar.new_from_model(menu)
-
-    def show_about(self):
-        """Show about dialog."""
-        about = Gtk.AboutDialog(transient_for=self.window)
-        about.set_program_name("Summit")
-        about.set_version("1.0.0")
-        about.set_comments(
-            "An unofficial GTK4 wrapper for the NordVPN CLI.\n\n"
-            "⚠️ DISCLAIMER: This is NOT affiliated with, authorized by, or endorsed by NordVPN. "
-            "This is a community-developed third-party tool. "
-            "See DISCLAIMER.md for full legal details."
-        )
-        about.set_authors(["albert-wolf"])
-        about.set_logo_icon_name("network-vpn")
-        about.set_website_label("GitHub Repository")
-        about.set_website("https://github.com/albert-wolf/summit")
-        about.present()
-
-    def restore_window_state(self):
-        """Restore window state after mapping."""
+    def check_login_status(self):
+        def worker():
+            is_logged_in = self.manager.is_logged_in()
+            GLib.idle_add(self.show_login_dialog_if_needed, is_logged_in)
+        import threading
+        threading.Thread(target=worker, daemon=True).start()
         return False
 
+    def show_login_dialog_if_needed(self, is_logged_in):
+        if not is_logged_in:
+            dialog = Gtk.AlertDialog()
+            dialog.set_message("Not Logged In")
+            dialog.set_detail_text("Please log in to NordVPN first:\nRun 'nordvpn login' in a terminal")
+            dialog.present(self.window)
+        return False
+
+    def load_config(self):
+        defaults = {
+            "window_width": 900, "window_height": 650,
+            "last_country": "United_States", "last_city": "Saint_Louis",
+            "poll_interval_ms": 2000, "autoconnect_enabled": False,
+            "autoconnect_country": "", "autoconnect_city": "", "favorites": [],
+        }
+        if self.config_file.exists():
+            try:
+                with open(self.config_file, "r") as f:
+                    self.config = json.load(f)
+                    for key, val in defaults.items():
+                        if key not in self.config: self.config[key] = val
+            except Exception: self.config = defaults
+        else: self.config = defaults
+
+    def save_config(self):
+        if self.window:
+            self.config["window_width"] = self.window.get_width()
+            self.config["window_height"] = self.window.get_height()
+        if hasattr(self, "settings_pane"):
+            self.config.update(self.settings_pane.get_autoconnect_config())
+        try:
+            with open(self.config_file, "w") as f:
+                json.dump(self.config, f, indent=2)
+        except Exception as e:
+            logging.error(f"Failed to save config: {e}")
+
+    def show_toast(self, message: str, is_error: bool = False):
+        if self.window and hasattr(self.window, "toast_overlay"):
+            self.window.toast_overlay.show_toast(message, is_error)
+
+    def load_autoconnect_background(self):
+        def worker():
+            countries = self.manager.get_countries()
+            saved_country = self.config.get("autoconnect_country", "")
+            saved_city = self.config.get("autoconnect_city", "")
+            def populate():
+                combo = self.settings_pane.autoconnect_country_combo
+                combo.remove_all()
+                combo.append("", "Select Country")
+                for c in countries: combo.append(c, c)
+                if saved_country:
+                    combo.handler_block(self.settings_pane.autoconnect_country_handler_id)
+                    combo.set_active_id(saved_country)
+                    combo.handler_unblock(self.settings_pane.autoconnect_country_handler_id)
+                    cities = self.manager.get_cities(saved_country)
+                    city_combo = self.settings_pane.autoconnect_city_combo
+                    city_combo.remove_all()
+                    city_combo.append("", "Select City")
+                    for city in cities: city_combo.append(city, city)
+                    if saved_city: city_combo.set_active_id(saved_city)
+            GLib.idle_add(populate)
+        import threading
+        threading.Thread(target=worker, daemon=True).start()
+
     def start_polling(self):
-        """Start status polling every 2 seconds."""
         interval = self.config.get("poll_interval_ms", 2000)
         self.poll_timer = GLib.timeout_add(interval, self.poll_status)
 
     def poll_status(self):
-        """Start background thread to poll VPN status - never block the main thread."""
-
         def worker():
             try:
-                # Fetch status once and share between both panes
                 status = self.manager.get_status()
-
-                # Update both panes with the same status result
                 if hasattr(self, "status_pane"):
                     GLib.idle_add(self.status_pane.apply_status, status)
                 if hasattr(self, "recent_pane"):
                     GLib.idle_add(self.recent_pane.apply_status, status)
             except Exception as e:
-                print(f"[ERROR] Poll failed: {e}")
-
+                logging.error(f"Poll failed: {e}")
         import threading
+        threading.Thread(target=worker, daemon=True).start()
+        return True
 
-        thread = threading.Thread(target=worker, daemon=True)
-        thread.start()
-        return True  # Keep polling
-
-    def on_status_change(self, status):
-        """Callback when status changes (for future use)."""
-        pass
-
-    def switch_to_servers_tab(self):
-        """Switch to servers tab."""
-        self.tab_buttons["servers"].set_active(True)
-
-    def on_notebook_page_changed(self, notebook, page, page_num):
-        """Handle tab changes - show/hide right pane."""
-        self.update_right_pane_visibility(page_num)
-
-    def update_right_pane_visibility(self, page_num=None):
-        """Show right pane only on Status tab."""
-        if (
-            not hasattr(self, "recent_pane")
-            or not hasattr(self, "content_paned")
-            or not hasattr(self, "stack")
-        ):
-            return
-
-        # Get current tab from stack
-        active_tab = self.stack.get_visible_child_name()
-
-        # Only show on Status tab
-        if active_tab == "status":
-            # Add recent pane as right child if not already there
-            if self.content_paned.get_end_child() != self.recent_pane:
-                self.content_paned.set_end_child(self.recent_pane)
-        else:
-            # Remove recent pane from right side on all other tabs
-            if self.content_paned.get_end_child() == self.recent_pane:
-                self.content_paned.set_end_child(None)
-
+    def on_status_change(self, status): pass
+    def switch_to_servers_tab(self): self.window.tab_buttons["servers"].set_active(True)
     def on_window_close(self, window):
-        """Handle window close."""
-        if self.poll_timer:
-            GLib.source_remove(self.poll_timer)
+        if self.poll_timer: GLib.source_remove(self.poll_timer)
         self.save_config()
         return False
-
 
 def main():
     GLib.set_prgname("summit")
     app = SummitApp()
     return app.run(sys.argv)
-
 
 if __name__ == "__main__":
     sys.exit(main())
