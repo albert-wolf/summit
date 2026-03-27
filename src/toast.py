@@ -4,20 +4,19 @@ gi.require_version("Gtk", "4.0")
 from gi.repository import Gtk, GLib
 
 
-class ToastOverlay(Gtk.Overlay):
-    """Toast notification overlay for success/error messages."""
+class ToastOverlay:
+    """Toast notification helper for success/error messages.
+    Wraps an existing Gtk.Overlay."""
 
-    __gtype_name__ = "ToastOverlay"
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+    def __init__(self, overlay: Gtk.Overlay):
+        self.overlay = overlay
         self.toast_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
         self.toast_box.set_halign(Gtk.Align.CENTER)
         self.toast_box.set_valign(Gtk.Align.END)
         self.toast_box.set_margin_bottom(24)
         self.toast_box.set_margin_start(12)
         self.toast_box.set_margin_end(12)
-        self.add_overlay(self.toast_box)
+        self.overlay.add_overlay(self.toast_box)
 
         self.active_toast = None
         self.toast_timeout = None

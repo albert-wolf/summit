@@ -1,8 +1,11 @@
 import gi
+import logging
 
 gi.require_version("Gtk", "4.0")
 from gi.repository import Gtk, GLib
 from summit_manager import SummitManager
+
+logger = logging.getLogger(__name__)
 
 
 @Gtk.Template(resource_path="/io/github/summit/ui/meshnet_pane.ui")
@@ -18,6 +21,7 @@ class MeshnetPane(Gtk.Box):
 
     def __init__(self, manager: SummitManager):
         super().__init__()
+        self.init_template()
 
         self.manager = manager
         self.meshnet_enabled = False
@@ -60,7 +64,7 @@ class MeshnetPane(Gtk.Box):
                 GLib.idle_add(self.apply_meshnet_state, enabled, peers)
                 GLib.idle_add(lambda: setattr(self, "initializing", False))
             except Exception as e:
-                print(f"[ERROR] Failed to load meshnet state: {e}")
+                logger.error(f"Failed to load meshnet state: {e}")
                 GLib.idle_add(lambda: setattr(self, "initializing", False))
 
         import threading

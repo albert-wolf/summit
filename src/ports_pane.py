@@ -18,6 +18,7 @@ class PortsPane(Gtk.Box):
 
     def __init__(self, manager: SummitManager):
         super().__init__()
+        self.init_template()
 
         self.manager = manager
         self.ports = []
