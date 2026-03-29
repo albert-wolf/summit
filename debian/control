@@ -6,8 +6,9 @@ Architecture: all
 Maintainer: Wolf <wolf@localhost>
 Depends: python3 (>= 3.10),
          python3-gi (>= 3.40),
-         gir1.2-gtk-4.0,
-         nordvpn
+         gir1.2-gtk-4.0
+Recommends: nordvpn,
+            python3-requests
 Description: Summit - NordVPN Client
  A lightweight GTK4 client for NordVPN built with Python.
  Connect, disconnect, manage servers, ports, and meshnet peers.
