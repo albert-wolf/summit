@@ -119,7 +119,7 @@ class RecentPane(Gtk.Box):
 
             remove_btn = Gtk.Button(label="×")
             remove_btn.set_size_request(30, -1)
-            remove_btn.connect("clicked", lambda btn: self.on_remove_favorite(fav))
+            remove_btn.connect("clicked", lambda btn, f=fav: self.on_remove_favorite(f))
 
             hbox.append(label)
             hbox.append(remove_btn)

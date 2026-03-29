@@ -1,10 +1,11 @@
-# Summit — GTK4 NordVPN GUI (v0.8.0 Beta)
+# Summit — GTK4 NordVPN GUI (v0.8.1 Beta)
 An unofficial, community-developed, professional GTK4 graphical interface for the NordVPN command-line tool on Linux.
 
-<img width="942" height="650" alt="image" src="https://github.com/user-attachments/assets/d1030e2d-829e-4b33-a3b2-2619a5687dac" />
-<img width="942" height="650" alt="image" src="https://github.com/user-attachments/assets/f8d473e9-8090-4500-b62e-e1c4aaea7ed1" />
-<img width="942" height="650" alt="image" src="https://github.com/user-attachments/assets/70955d01-6b18-43e8-9ca4-d00322cbe18b" />
-<img width="942" height="650" alt="image" src="https://github.com/user-attachments/assets/e7104de1-0a61-4460-ba3f-2e107b987cb3" />
+<img width="967" height="629" alt="Screenshot from 2026-03-29 02-07-40" src="https://github.com/user-attachments/assets/58a3c263-2851-49af-8d59-0f723daa659f" />
+<img width="967" height="629" alt="Screenshot from 2026-03-29 02-08-08" src="https://github.com/user-attachments/assets/391774d4-6ebf-4997-a48b-1230463cb61a" />
+<img width="967" height="629" alt="Screenshot from 2026-03-29 02-08-27" src="https://github.com/user-attachments/assets/0c6eea8d-7ad1-4960-b985-c2eb6a2e2913" />
+<img width="967" height="629" alt="Screenshot from 2026-03-29 02-10-35" src="https://github.com/user-attachments/assets/10b796ec-7069-458e-a6ec-9c2f68537eb7" />
+<img width="967" height="629" alt="Screenshot from 2026-03-29 02-10-56" src="https://github.com/user-attachments/assets/afff5aa2-2302-45c8-812c-7856a651784f" />
 
 ## ⚠️ Disclaimer
 
@@ -42,7 +43,7 @@ An unofficial, community-developed, professional GTK4 graphical interface for th
 Download the latest release from the `dist/` folder or the Releases page.
 
 ```bash
-sudo dpkg -i dist/summit_0.8.0_all.deb
+sudo dpkg -i dist/summit_0.8.1_all.deb
 sudo apt-get install -f  # Resolve any missing dependencies
 summit
 ```

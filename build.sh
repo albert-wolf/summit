@@ -2,7 +2,7 @@
 set -e
 
 PACKAGE=summit
-VERSION=0.8.0
+VERSION=0.8.1
 BUILD_DIR=build/${PACKAGE}
 DIST_DIR=dist
 
@@ -32,7 +32,6 @@ echo ""
 
 echo "[1/8] Cleaning previous build..."
 rm -rf build/
-rm -rf ${DIST_DIR}/
 mkdir -p build/
 mkdir -p ${DIST_DIR}
 
@@ -45,32 +44,32 @@ done
 echo "[3/8] Compiling resources..."
 glib-compile-resources --target=src/resources/summit.gresource --sourcedir=src src/resources/summit.gresource.xml
 
-echo "[3/8] Creating package directory structure..."
+echo "[4/8] Creating package directory structure..."
 mkdir -p "${BUILD_DIR}/DEBIAN"
 mkdir -p "${BUILD_DIR}/usr/bin"
 mkdir -p "${BUILD_DIR}/usr/share/${PACKAGE}/src"
 mkdir -p "${BUILD_DIR}/usr/share/${PACKAGE}/resources"
 mkdir -p "${BUILD_DIR}/usr/share/applications"
 
-echo "[4/8] Copying DEBIAN control files..."
+echo "[5/8] Copying DEBIAN control files..."
 cp debian/control    "${BUILD_DIR}/DEBIAN/control"
 cp debian/postinst   "${BUILD_DIR}/DEBIAN/postinst"
 cp debian/changelog  "${BUILD_DIR}/DEBIAN/changelog"
 cp debian/compat     "${BUILD_DIR}/DEBIAN/compat"
 chmod 0755 "${BUILD_DIR}/DEBIAN/postinst"
 
-echo "[5/8] Copying source and resource files..."
+echo "[6/8] Copying source and resource files..."
 cp src/*.py               "${BUILD_DIR}/usr/share/${PACKAGE}/src/"
 cp src/resources/summit.gresource "${BUILD_DIR}/usr/share/${PACKAGE}/resources/"
 
-echo "[6/8] Creating launcher wrapper..."
+echo "[7/8] Creating launcher wrapper..."
 cat > "${BUILD_DIR}/usr/bin/${PACKAGE}" << 'LAUNCHER'
 #!/bin/sh
 exec python3 /usr/share/summit/src/main.py "$@"
 LAUNCHER
 chmod 0755 "${BUILD_DIR}/usr/bin/${PACKAGE}"
 
-echo "[7/8] Creating desktop entry..."
+echo "[8/8] Creating desktop entry..."
 cat > "${BUILD_DIR}/usr/share/applications/${PACKAGE}.desktop" << 'DESKTOP'
 [Desktop Entry]
 Name=Summit
@@ -85,7 +84,7 @@ StartupWMClass=summit
 StartupNotify=true
 DESKTOP
 
-echo "[8/8] Building .deb package..."
+echo "[9/9] Building .deb package..."
 dpkg-deb --build --root-owner-group "${BUILD_DIR}" "${DIST_DIR}/${PACKAGE}_${VERSION}_all.deb"
 
 echo ""

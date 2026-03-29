@@ -1,18 +1,18 @@
-summit (2.0.0) stable; urgency=medium
+summit (0.8.1) stable; urgency=medium
 
   * Modernization Release: Blueprint migration and Flatpak support
 
  -- Wolf <Wolf-GitHub@pm.me>  Wed, 18 Mar 2026 01:58:06 -0500
 
-summit (2.0.0) stable; urgency=medium
+summit (0.8.1) stable; urgency=medium
 
   * Modernization Release
   * Moved build artifacts to dist/ directory
-  * Bumped version to 2.0.0
+  * Bumped version to 0.8.1
 
  -- Wolf <wolf@localhost>  Wed, 18 Mar 2026 01:54:14 -0500
 
-summit (2.0.0) stable; urgency=medium
+summit (0.8.1) stable; urgency=medium
 
   * Initial release
 

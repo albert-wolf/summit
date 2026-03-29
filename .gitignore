@@ -3,6 +3,7 @@ build/
 *.deb
 *.egg-info/
 dist/
+!dist/*.deb
 __pycache__/
 *.pyc
 *.pyo
@@ -44,4 +45,5 @@ src/resources/*.gresource
 build/
 summit_*.deb
 dist/
+!dist/*.deb
 .superpowers/
