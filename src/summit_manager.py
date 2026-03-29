@@ -99,21 +99,29 @@ class SummitManager:
 
         stdout, _, returncode = self.run_command(["countries"])
         if returncode == 0:
-            self._countries_cache = [line.strip() for line in stdout.splitlines() if line.strip()]
+            countries = []
+            for line in stdout.splitlines():
+                # nordvpn prints countries in columns (tab/space separated)
+                countries.extend([c.strip() for c in line.split() if c.strip()])
+            self._countries_cache = sorted(countries)
             return self._countries_cache
+        return []
+
+    def get_cities(self, country: str) -> List[str]:
+        """Parse `nordvpn cities <country>` output."""
+        stdout, _, returncode = self.run_command(["cities", country])
+        if returncode == 0:
+            cities = []
+            for line in stdout.splitlines():
+                # nordvpn prints cities in columns (tab/space separated)
+                cities.extend([c.strip() for c in line.split() if c.strip()])
+            return sorted(cities)
         return []
 
     def clear_cache(self) -> None:
         """Clear all cached data. Call after operations that change state."""
         self._countries_cache = None
         self._settings_cache = None
-
-    def get_cities(self, country: str) -> List[str]:
-        """Parse `nordvpn cities <country>` output."""
-        stdout, _, returncode = self.run_command(["cities", country])
-        if returncode == 0:
-            return [line.strip() for line in stdout.splitlines() if line.strip()]
-        return []
 
     def connect(self, country: str, city: Optional[str] = None) -> Tuple[bool, str]:
         """Connect to a server. Returns (success, message).

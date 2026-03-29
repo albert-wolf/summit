@@ -5,94 +5,100 @@ template $SummitWindow : Gtk.ApplicationWindow {
   default-height: 650;
   title: "Summit";
 
-  Overlay toast_overlay {
+  [titlebar]
+  HeaderBar header_bar {
+    show-title-buttons: true;
+    title-widget: Box {}; // Explicitly empty to prevent default centered title
+
+    [start]
     Box {
-      orientation: vertical;
+      styles ["tab-button-group"]
 
-      HeaderBar header_bar {
-        [start]
-        Label {
-          label: "Summit";
-          styles ["app-title"]
+      ToggleButton status_btn {
+        label: "Status";
+        active: true;
+        styles ["tab-button", "first-tab"]
+      }
+
+      ToggleButton servers_btn {
+        label: "Servers";
+        styles ["tab-button"]
+      }
+
+      ToggleButton settings_btn {
+        label: "Settings";
+        styles ["tab-button"]
+      }
+
+      ToggleButton ports_btn {
+        label: "Ports";
+        styles ["tab-button"]
+      }
+
+      ToggleButton meshnet_btn {
+        label: "Meshnet";
+        styles ["tab-button", "last-tab"]
+      }
+    }
+
+    [end]
+    MenuButton {
+      icon-name: "open-menu-symbolic";
+      menu-model: primary_menu;
+    }
+
+    [end]
+    Label {
+      label: "Summit";
+      styles ["app-title"]
+      margin-end: 12;
+    }
+  }
+
+  Overlay toast_overlay {
+    Paned content_paned {
+      orientation: horizontal;
+      wide-handle: true;
+      position: 550;
+      vexpand: true;
+      hexpand: true;
+
+      [start]
+      Stack main_stack {
+        vexpand: true;
+        hexpand: true;
+        transition-type: crossfade;
+
+        StackPage {
+          name: "status";
+          child: Box status_pane_box {};
         }
 
-        [start]
-        Box {
-          styles ["tab-button-group"]
-
-          ToggleButton status_btn {
-            label: "Status";
-            active: true;
-            styles ["tab-button", "first-tab"]
-          }
-
-          ToggleButton servers_btn {
-            label: "Servers";
-            styles ["tab-button"]
-          }
-
-          ToggleButton settings_btn {
-            label: "Settings";
-            styles ["tab-button"]
-          }
-
-          ToggleButton ports_btn {
-            label: "Ports";
-            styles ["tab-button"]
-          }
-
-          ToggleButton meshnet_btn {
-            label: "Meshnet";
-            styles ["tab-button", "last-tab"]
-          }
+        StackPage {
+          name: "servers";
+          child: Box servers_pane_box {};
         }
 
-        [end]
-        MenuButton {
-          icon-name: "open-menu-symbolic";
-          menu-model: primary_menu;
+        StackPage {
+          name: "settings";
+          child: Box settings_pane_box {};
+        }
+
+        StackPage {
+          name: "ports";
+          child: Box ports_pane_box {};
+        }
+
+        StackPage {
+          name: "meshnet";
+          child: Box meshnet_pane_box {};
         }
       }
 
-      Paned content_paned {
-        orientation: horizontal;
-        wide-handle: true;
-        position: 550;
-        vexpand: true;
-        hexpand: true;
-
-        [start]
-        Stack main_stack {
-          vexpand: true;
-          hexpand: true;
-          transition-type: crossfade;
-
-          Box status_pane_box {
-            name: "status";
-          }
-
-          Box servers_pane_box {
-            name: "servers";
-          }
-
-          Box settings_pane_box {
-            name: "settings";
-          }
-
-          Box ports_pane_box {
-            name: "ports";
-          }
-
-          Box meshnet_pane_box {
-            name: "meshnet";
-          }
-        }
-
-        [end]
-        Box recent_pane_container {
-          width-request: 250;
-          hexpand: false;
-        }
+      [end]
+      Box recent_pane_container {
+        width-request: 250;
+        hexpand: false;
       }
     }
   }

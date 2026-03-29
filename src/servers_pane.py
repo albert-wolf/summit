@@ -1,8 +1,11 @@
 import gi
+import logging
 
 gi.require_version("Gtk", "4.0")
 from gi.repository import Gtk, GLib
 from summit_manager import SummitManager
+
+logger = logging.getLogger(__name__)
 
 
 @Gtk.Template(resource_path="/io/github/summit/ui/servers_pane.ui")
@@ -20,6 +23,7 @@ class ServersPane(Gtk.Box):
 
     def __init__(self, manager: SummitManager):
         super().__init__()
+        self.init_template()
 
         self.manager = manager
         self.selected_country = None
@@ -126,7 +130,7 @@ class ServersPane(Gtk.Box):
                                     city_to_countries[city] = []
                                 city_to_countries[city].append(country)
                         except Exception as e:
-                            print(f"[WARNING] Error loading cities for {futures[future]}: {e}")
+                            logger.warning(f"Error loading cities for {futures[future]}: {e}")
 
                 # Always update all_cities and mapping from fresh fetch
                 self.all_cities = sorted(list(all_cities))
@@ -135,9 +139,9 @@ class ServersPane(Gtk.Box):
                     self.city_to_countries = city_to_countries
                     # Save directly on background thread (no GTK widgets touched)
                     self.save_city_to_countries_to_cache(city_to_countries)
-                    print("[INFO] City cache updated with fresh data")
+                    logger.info("City cache updated with fresh data")
                 else:
-                    print("[INFO] City cache is up-to-date")
+                    logger.info("City cache is up-to-date")
 
                 # Refresh search display on main thread once cities are loaded
                 if self.search_text:
@@ -149,7 +153,7 @@ class ServersPane(Gtk.Box):
                         )
                     )
             except Exception as e:
-                print(f"[ERROR] Failed to load all cities: {e}")
+                logger.error(f"Failed to load all cities: {e}")
 
         import threading
 
@@ -330,7 +334,7 @@ class ServersPane(Gtk.Box):
                 if data.get("version") == 1:
                     return data.get("city_to_countries", {})
         except Exception as e:
-            print(f"[WARNING] Failed to load cache: {e}")
+            logger.warning(f"Failed to load cache: {e}")
 
         return None
 
@@ -357,7 +361,7 @@ class ServersPane(Gtk.Box):
             with open(cache_path, "w") as f:
                 json.dump(cache_data, f, indent=2)
         except Exception as e:
-            print(f"[WARNING] Failed to save cache: {e}")
+            logger.warning(f"Failed to save cache: {e}")
 
     @Gtk.Template.Callback()
     def on_city_selected(self, listbox, row):

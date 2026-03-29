@@ -7,17 +7,20 @@ import logging
 import re
 from pathlib import Path
 
+
 # Configure Logging
 class SensitiveFilter(logging.Filter):
     """Filter to mask sensitive info (IPs, emails) in logs."""
+
     def filter(self, record):
         if not isinstance(record.msg, str):
             return True
         # Mask IPv4
-        record.msg = re.sub(r'\b\d{1,3}(\.\d{1,3}){3}\b', '[IP_MASKED]', record.msg)
+        record.msg = re.sub(r"\b\d{1,3}(\.\d{1,3}){3}\b", "[IP_MASKED]", record.msg)
         # Mask potential emails/account names
-        record.msg = re.sub(r'\b[\w\.-]+@[\w\.-]+\.\w{2,}\b', '[ACCOUNT_MASKED]', record.msg)
+        record.msg = re.sub(r"\b[\w\.-]+@[\w\.-]+\.\w{2,}\b", "[ACCOUNT_MASKED]", record.msg)
         return True
+
 
 def setup_logging():
     log_dir = Path.home() / ".cache" / "summit"
@@ -27,7 +30,7 @@ def setup_logging():
     logger = logging.getLogger()
     logger.setLevel(logging.INFO)
 
-    formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+    formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
 
     # Console Handler
     ch = logging.StreamHandler()
@@ -41,6 +44,7 @@ def setup_logging():
     fh.addFilter(SensitiveFilter())
     logger.addHandler(fh)
 
+
 setup_logging()
 logger = logging.getLogger(__name__)
 
@@ -52,20 +56,24 @@ gi.require_version("Gio", "2.0")
 
 from gi.repository import Gtk, Gdk, Gio, GLib
 
+
 # Resource loading
 def register_resources():
-    resource_file = Path("/usr/share/summit/resources/summit.gresource")
+    # Prioritize local resources for development
+    resource_file = Path(__file__).parent / "resources" / "summit.gresource"
     if not resource_file.exists():
-        resource_file = Path(__file__).parent / "resources" / "summit.gresource"
+        resource_file = Path("/usr/share/summit/resources/summit.gresource")
 
     if resource_file.exists():
         try:
             resource = Gio.Resource.load(str(resource_file))
-            resource._register()
+            Gio.resources_register(resource)
+            logger.info(f"Successfully registered resources from {resource_file}")
         except Exception as e:
             logger.error(f"Error loading resources: {e}")
     else:
         logger.warning(f"Resource file not found: {resource_file}")
+
 
 register_resources()
 
@@ -78,26 +86,34 @@ from meshnet_pane import MeshnetPane
 from recent_pane import RecentPane
 from toast import ToastOverlay
 
+
 @Gtk.Template(resource_path="/io/github/summit/ui/main_window.ui")
 class SummitWindow(Gtk.ApplicationWindow):
     """Main application window using Gtk.Template."""
 
     __gtype_name__ = "SummitWindow"
 
-    header_bar = Gtk.Template.Child()
-    main_stack = Gtk.Template.Child()
-    toast_overlay = Gtk.Template.Child()
-    content_paned = Gtk.Template.Child()
-    recent_pane_container = Gtk.Template.Child()
+    header_bar = Gtk.Template.Child("header_bar")
+    main_stack = Gtk.Template.Child("main_stack")
+    toast_overlay = Gtk.Template.Child("toast_overlay")
+    content_paned = Gtk.Template.Child("content_paned")
+    recent_pane_container = Gtk.Template.Child("recent_pane_container")
 
-    status_btn = Gtk.Template.Child()
-    servers_btn = Gtk.Template.Child()
-    settings_btn = Gtk.Template.Child()
-    ports_btn = Gtk.Template.Child()
-    meshnet_btn = Gtk.Template.Child()
+    status_btn = Gtk.Template.Child("status_btn")
+    servers_btn = Gtk.Template.Child("servers_btn")
+    settings_btn = Gtk.Template.Child("settings_btn")
+    ports_btn = Gtk.Template.Child("ports_btn")
+    meshnet_btn = Gtk.Template.Child("meshnet_btn")
+
+    status_pane_box = Gtk.Template.Child("status_pane_box")
+    servers_pane_box = Gtk.Template.Child("servers_pane_box")
+    settings_pane_box = Gtk.Template.Child("settings_pane_box")
+    ports_pane_box = Gtk.Template.Child("ports_pane_box")
+    meshnet_pane_box = Gtk.Template.Child("meshnet_pane_box")
 
     def __init__(self, app, **kwargs):
         super().__init__(application=app, **kwargs)
+        self.init_template()
         self.app = app
         self._updating_tabs = False
 
@@ -112,9 +128,8 @@ class SummitWindow(Gtk.ApplicationWindow):
         for name, btn in self.tab_buttons.items():
             btn.connect("toggled", self.on_tab_button_toggled, name)
 
-        # Initialize ToastOverlay functionality
-        self.toast_overlay.__class__ = ToastOverlay
-        ToastOverlay.__init__(self.toast_overlay)
+        # Initialize ToastOverlay wrapper
+        self.toast_overlay_wrapper = ToastOverlay(self.toast_overlay)
 
     def on_tab_button_toggled(self, button: Gtk.ToggleButton, tab_name: str):
         if self._updating_tabs:
@@ -146,6 +161,7 @@ class SummitWindow(Gtk.ApplicationWindow):
             self.recent_pane_container.set_visible(False)
             self.content_paned.set_position(9999)
 
+
 class SummitApp(Gtk.Application):
     """Summit - NordVPN Client for GTK4 Application."""
 
@@ -162,6 +178,30 @@ class SummitApp(Gtk.Application):
 
         self.connect("startup", self.do_startup)
         self.connect("activate", self.on_activate)
+        self.add_custom_actions()
+
+    def add_custom_actions(self):
+        # Quit action
+        quit_action = Gio.SimpleAction.new("quit", None)
+        quit_action.connect("activate", lambda *_: self.quit())
+        self.add_action(quit_action)
+
+        # About action
+        about_action = Gio.SimpleAction.new("about", None)
+        about_action.connect("activate", self.on_about_action)
+        self.add_action(about_action)
+
+    def on_about_action(self, action, param):
+        dialog = Gtk.AboutDialog()
+        dialog.set_transient_for(self.window)
+        dialog.set_program_name("Summit")
+        dialog.set_version("2.1.0")
+        dialog.set_authors(["Wolf-GitHub <Wolf-GitHub@pm.me>"])
+        dialog.set_comments("A GTK4 NordVPN Client for LMDE 7")
+        dialog.set_website("https://github.com/Wolf-GitHub/Summit")
+        dialog.set_license_type(Gtk.License.MIT_X11)
+        dialog.set_logo_icon_name("network-vpn")
+        dialog.present()
 
     def do_startup(self, *args):
         Gtk.Application.do_startup(self)
@@ -180,7 +220,9 @@ class SummitApp(Gtk.Application):
                 if not self.manager.is_installed():
                     dialog = Gtk.AlertDialog()
                     dialog.set_message("NordVPN Not Installed")
-                    dialog.set_detail_text("Please install NordVPN first:\nsudo apt install nordvpn")
+                    dialog.set_detail_text(
+                        "Please install NordVPN first:\nsudo apt install nordvpn"
+                    )
                     dialog.present(None)
                     self.quit()
                     return
@@ -188,7 +230,7 @@ class SummitApp(Gtk.Application):
                 self.build_window()
                 self.window.present()
             except Exception as e:
-                logging.error(f"Failed to build window: {e}", exc_info=True)
+                logger.error(f"Failed to build window: {e}", exc_info=True)
 
     def build_window(self):
         self.window = SummitWindow(app=self)
@@ -207,10 +249,7 @@ class SummitApp(Gtk.Application):
         self.servers_pane = ServersPane(self.manager)
         self.servers_pane.set_app_ref(self)
 
-        self.settings_pane = SettingsPane(self.manager)
-        self.settings_pane.autoconnect_switch.set_active(
-            self.config.get("autoconnect_enabled", False)
-        )
+        self.settings_pane = SettingsPane(self.manager, self.config)
 
         self.ports_pane = PortsPane(self.manager)
         self.meshnet_pane = MeshnetPane(self.manager)
@@ -219,14 +258,13 @@ class SummitApp(Gtk.Application):
         self.recent_pane.set_app_ref(self)
         self.recent_pane.refresh_favorites_display()
 
-        self.window.main_stack.get_child_by_name("status").append(self.status_pane)
-        self.window.main_stack.get_child_by_name("servers").append(self.servers_pane)
-        self.window.main_stack.get_child_by_name("settings").append(self.settings_pane)
-        self.window.main_stack.get_child_by_name("ports").append(self.ports_pane)
-        self.window.main_stack.get_child_by_name("meshnet").append(self.meshnet_pane)
+        self.window.status_pane_box.append(self.status_pane)
+        self.window.servers_pane_box.append(self.servers_pane)
+        self.window.settings_pane_box.append(self.settings_pane)
+        self.window.ports_pane_box.append(self.ports_pane)
+        self.window.meshnet_pane_box.append(self.meshnet_pane)
         self.window.recent_pane_container.append(self.recent_pane)
 
-        self.load_autoconnect_background()
         self.start_polling()
         GLib.idle_add(self.check_login_status)
 
@@ -238,7 +276,9 @@ class SummitApp(Gtk.Application):
         def worker():
             is_logged_in = self.manager.is_logged_in()
             GLib.idle_add(self.show_login_dialog_if_needed, is_logged_in)
+
         import threading
+
         threading.Thread(target=worker, daemon=True).start()
         return False
 
@@ -246,25 +286,35 @@ class SummitApp(Gtk.Application):
         if not is_logged_in:
             dialog = Gtk.AlertDialog()
             dialog.set_message("Not Logged In")
-            dialog.set_detail_text("Please log in to NordVPN first:\nRun 'nordvpn login' in a terminal")
+            dialog.set_detail_text(
+                "Please log in to NordVPN first:\nRun 'nordvpn login' in a terminal"
+            )
             dialog.present(self.window)
         return False
 
     def load_config(self):
         defaults = {
-            "window_width": 900, "window_height": 650,
-            "last_country": "United_States", "last_city": "Saint_Louis",
-            "poll_interval_ms": 2000, "autoconnect_enabled": False,
-            "autoconnect_country": "", "autoconnect_city": "", "favorites": [],
+            "window_width": 900,
+            "window_height": 650,
+            "last_country": "United_States",
+            "last_city": "Saint_Louis",
+            "poll_interval_ms": 2000,
+            "autoconnect_enabled": False,
+            "autoconnect_country": "",
+            "autoconnect_city": "",
+            "favorites": [],
         }
         if self.config_file.exists():
             try:
                 with open(self.config_file, "r") as f:
                     self.config = json.load(f)
                     for key, val in defaults.items():
-                        if key not in self.config: self.config[key] = val
-            except Exception: self.config = defaults
-        else: self.config = defaults
+                        if key not in self.config:
+                            self.config[key] = val
+            except Exception:
+                self.config = defaults
+        else:
+            self.config = defaults
 
     def save_config(self):
         if self.window:
@@ -276,35 +326,11 @@ class SummitApp(Gtk.Application):
             with open(self.config_file, "w") as f:
                 json.dump(self.config, f, indent=2)
         except Exception as e:
-            logging.error(f"Failed to save config: {e}")
+            logger.error(f"Failed to save config: {e}")
 
     def show_toast(self, message: str, is_error: bool = False):
-        if self.window and hasattr(self.window, "toast_overlay"):
-            self.window.toast_overlay.show_toast(message, is_error)
-
-    def load_autoconnect_background(self):
-        def worker():
-            countries = self.manager.get_countries()
-            saved_country = self.config.get("autoconnect_country", "")
-            saved_city = self.config.get("autoconnect_city", "")
-            def populate():
-                combo = self.settings_pane.autoconnect_country_combo
-                combo.remove_all()
-                combo.append("", "Select Country")
-                for c in countries: combo.append(c, c)
-                if saved_country:
-                    combo.handler_block(self.settings_pane.autoconnect_country_handler_id)
-                    combo.set_active_id(saved_country)
-                    combo.handler_unblock(self.settings_pane.autoconnect_country_handler_id)
-                    cities = self.manager.get_cities(saved_country)
-                    city_combo = self.settings_pane.autoconnect_city_combo
-                    city_combo.remove_all()
-                    city_combo.append("", "Select City")
-                    for city in cities: city_combo.append(city, city)
-                    if saved_city: city_combo.set_active_id(saved_city)
-            GLib.idle_add(populate)
-        import threading
-        threading.Thread(target=worker, daemon=True).start()
+        if self.window and hasattr(self.window, "toast_overlay_wrapper"):
+            self.window.toast_overlay_wrapper.show_toast(message, is_error)
 
     def start_polling(self):
         interval = self.config.get("poll_interval_ms", 2000)
@@ -319,22 +345,31 @@ class SummitApp(Gtk.Application):
                 if hasattr(self, "recent_pane"):
                     GLib.idle_add(self.recent_pane.apply_status, status)
             except Exception as e:
-                logging.error(f"Poll failed: {e}")
+                logger.error(f"Poll failed: {e}")
+
         import threading
+
         threading.Thread(target=worker, daemon=True).start()
         return True
 
-    def on_status_change(self, status): pass
-    def switch_to_servers_tab(self): self.window.tab_buttons["servers"].set_active(True)
+    def on_status_change(self, status):
+        pass
+
+    def switch_to_servers_tab(self):
+        self.window.tab_buttons["servers"].set_active(True)
+
     def on_window_close(self, window):
-        if self.poll_timer: GLib.source_remove(self.poll_timer)
+        if self.poll_timer:
+            GLib.source_remove(self.poll_timer)
         self.save_config()
         return False
+
 
 def main():
     GLib.set_prgname("summit")
     app = SummitApp()
     return app.run(sys.argv)
+
 
 if __name__ == "__main__":
     sys.exit(main())

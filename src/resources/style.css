@@ -6,6 +6,21 @@
     padding: 4px;
 }
 
-.heading {
+.dim-label {
+    opacity: 0.6;
+    font-size: 0.9rem;
     font-weight: bold;
+    margin-bottom: 4px;
+}
+
+list {
+    background: transparent;
+}
+
+list > row {
+    padding: 2px;
+}
+
+list > row:not(:last-child) {
+    border-bottom: 1px solid alpha(@theme_fg_color, 0.05);
 }

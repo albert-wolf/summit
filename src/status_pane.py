@@ -30,6 +30,7 @@ class StatusPane(Gtk.Box):
 
     def __init__(self, manager: SummitManager, on_status_change=None, on_connect_click=None):
         super().__init__()
+        self.init_template()
 
         self.manager = manager
         self.on_status_change = on_status_change

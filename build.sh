@@ -2,7 +2,7 @@
 set -e
 
 PACKAGE=summit
-VERSION=2.0.0
+VERSION=0.8.0
 BUILD_DIR=build/${PACKAGE}
 DIST_DIR=dist
 
@@ -36,7 +36,13 @@ rm -rf ${DIST_DIR}/
 mkdir -p build/
 mkdir -p ${DIST_DIR}
 
-echo "[2/8] Compiling resources..."
+echo "[2/8] Compiling Blueprints..."
+for blp in src/ui/*.blp; do
+    ui="${blp%.blp}.ui"
+    blueprint-compiler compile --output "$ui" "$blp"
+done
+
+echo "[3/8] Compiling resources..."
 glib-compile-resources --target=src/resources/summit.gresource --sourcedir=src src/resources/summit.gresource.xml
 
 echo "[3/8] Creating package directory structure..."

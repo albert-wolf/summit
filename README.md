@@ -1,4 +1,4 @@
-# Summit — GTK4 NordVPN GUI (v2.0.0)
+# Summit — GTK4 NordVPN GUI (v0.8.0 Beta)
 An unofficial, community-developed, professional GTK4 graphical interface for the NordVPN command-line tool on Linux.
 
 <img width="942" height="650" alt="image" src="https://github.com/user-attachments/assets/d1030e2d-829e-4b33-a3b2-2619a5687dac" />
@@ -25,11 +25,15 @@ An unofficial, community-developed, professional GTK4 graphical interface for th
   - **Async Threading**: All NordVPN CLI interactions run in non-blocking background threads to ensure a responsive GUI.
   - **XDG Compliance**: User configuration persisted in `~/.config/summit/config.json`.
 
+- **Standards & Quality**:
+  - **Global Development Manifest v2.1**: Adheres to high-tier professional standards for environment, coding, and automated workflows.
+  - **Logical Atomic Protocol**: Clean, milestone-based git history for maximum stability and bisectability.
+
 ## Requirements
 
 - Linux (Native Debian/LMDE or universal Flatpak)
 - NordVPN CLI (`nordvpn`) installed and logged in
-- Python 3.10+ (for source builds)
+- Python 3.11+ (for source builds)
 - GTK 4.0 & PyGObject
 
 ## Installation
@@ -38,7 +42,7 @@ An unofficial, community-developed, professional GTK4 graphical interface for th
 Download the latest release from the `dist/` folder or the Releases page.
 
 ```bash
-sudo dpkg -i dist/summit_2.0.0_all.deb
+sudo dpkg -i dist/summit_0.8.0_all.deb
 sudo apt-get install -f  # Resolve any missing dependencies
 summit
 ```
@@ -61,7 +65,7 @@ sudo apt-get install blueprint-compiler libgirepository-2.0-dev libcairo2-dev
 
 # Sync environment and run
 uv sync
-bash build.sh  # Compiles resources
+bash build.sh  # Compiles Blueprints and GResources
 uv run python src/main.py
 ```
 
@@ -87,8 +91,8 @@ Summit/
 │   ├── main.py              # Application entry point & GResource loading
 │   ├── summit_manager.py    # Decoupled NordVPN CLI wrapper
 │   └── *_pane.py            # Modular UI components (Template-based)
+├── debian/                  # Debian packaging metadata
 ├── dist/                    # Production build artifacts (.deb)
-├── docs/                    # Architectural plans and design docs
 ├── io.github.summit.json    # Flatpak manifest
 ├── pyproject.toml           # Modern Python metadata (uv/ruff)
 ├── build.sh                 # Unified Debian/Flatpak build script

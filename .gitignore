@@ -44,3 +44,4 @@ src/resources/*.gresource
 build/
 summit_*.deb
 dist/
+.superpowers/
