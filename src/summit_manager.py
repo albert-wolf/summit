@@ -10,6 +10,7 @@ class SummitManager:
     """NordVPN CLI wrapper with output parsing. No GTK dependencies."""
 
     def __init__(self):
+        self._is_flatpak = Path("/.flatpak-info").exists()
         self.nord_path = shutil.which("nordvpn")
         if not self.nord_path:
             self.nord_path = "nordvpn"  # Assume it's in PATH
@@ -20,9 +21,15 @@ class SummitManager:
 
     def run_command(self, args: List[str]) -> Tuple[str, str, int]:
         """Run nordvpn command, return (stdout, stderr, returncode)."""
+        cmd = [self.nord_path] + args
+        
+        # If running inside a Flatpak, spawn on the host
+        if self._is_flatpak:
+            cmd = ["flatpak-spawn", "--host", "nordvpn"] + args
+
         try:
             result = subprocess.run(
-                [self.nord_path] + args, capture_output=True, text=True, timeout=10
+                cmd, capture_output=True, text=True, timeout=10
             )
             return result.stdout, result.stderr, result.returncode
         except subprocess.TimeoutExpired:
