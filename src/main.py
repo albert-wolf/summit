@@ -202,7 +202,7 @@ class SummitApp(Gtk.Application):
         dialog = Gtk.AboutDialog()
         dialog.set_transient_for(self.window)
         dialog.set_program_name("Summit")
-        dialog.set_version("0.8.1")
+        dialog.set_version("0.8.2")
         dialog.set_authors(["Wolf-GitHub <Wolf-GitHub@pm.me>"])
         dialog.set_comments("A GTK4 NordVPN Client for LMDE 7")
         dialog.set_website("https://github.com/Wolf-GitHub/Summit")

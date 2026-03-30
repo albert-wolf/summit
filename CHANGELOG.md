@@ -1,23 +1,19 @@
-# NordGUI Changelog
+# Summit Changelog
 
-## v1.0.0 - Complete Release with Fixes
+## v0.8.2 - Cross-Platform Compatibility & Theming (Current)
 
 ### Features Implemented
-- ✅ 5-tab GTK4 interface (Status, Servers, Settings, Ports, Meshnet)
-- ✅ Real-time VPN status monitoring with 2-second polling
-- ✅ Server selection with country/city filtering
-- ✅ Settings management (9 boolean toggles + protocol/technology)
-- ✅ Port allowlist management with add/remove buttons
-- ✅ Meshnet management with 3-pane layout
-- ✅ Configuration persistence
-- ✅ Dark theme with eye-friendly styling
+- ✅ **Flatpak Host Escape**: Implemented `flatpak-spawn --host` logic for NordVPN CLI communication inside sandbox.
+- ✅ **Dark Mode Sync**: Added Flatpak permissions and Python logic to synchronize with system light/dark mode.
+- ✅ **Debian/Ubuntu Optimization**: Relaxed `nordvpn` dependency to `Recommends` to solve installation failures on Ubuntu/Debian machines without the NordVPN repository.
+- ✅ **Environment Detection**: Automatic detection of Flatpak environment for seamless command execution.
 
 ### Fixes Applied
+- **Fixed**: Critical `Gtk.AlertDialog` API crashes (changed `present`/`set_body` to `show`/`set_detail`).
+- **Fixed**: Missing `Path` import in `SummitManager` for sandbox detection.
+- **Fixed**: GResource path resolution for Flatpak environments.
 
-#### Settings Tab
-- **Fixed**: Boolean toggles now load with correct initial state on app startup
-- **Fixed**: Toggles no longer revert immediately after toggling
-- **Fixed**: Command name mapping - uses correct NordVPN CLI command names:
+## v0.8.1 - Patch Release with Fixes
   - `Kill Switch` → `killswitch`
   - `Auto-connect` → `autoconnect`
   - `LAN Discovery` → `lan-discovery`

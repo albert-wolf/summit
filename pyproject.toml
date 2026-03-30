@@ -1,6 +1,6 @@
 [project]
 name = "summit"
-version = "1.0.0"
+version = "0.8.2"
 description = "A GTK4 Python application for VPN management"
 readme = "README.md"
 requires-python = ">=3.10"
