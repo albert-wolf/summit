@@ -67,10 +67,6 @@ class SummitManager:
 
     def is_installed(self) -> bool:
         """Check if nordvpn is installed."""
-        if self._is_flatpak:
-            # Check for binary on host via host spawn
-            _, _, returncode = self.run_command(["--version"])
-            return returncode == 0
         return shutil.which("nordvpn") is not None
 
     def is_logged_in(self) -> bool:

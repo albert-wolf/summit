@@ -1,0 +1,11 @@
+[Desktop Entry]
+Name=Summit
+Comment=GTK4 NordVPN Client
+Exec=summit
+Icon=network-vpn
+Terminal=false
+Type=Application
+Categories=Utility;Network;
+Keywords=nordvpn;vpn;
+StartupWMClass=summit
+StartupNotify=true

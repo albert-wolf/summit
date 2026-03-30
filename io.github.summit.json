@@ -11,16 +11,19 @@
     "--socket=wayland",
     "--device=dri",
     "--filesystem=home",
+    "--filesystem=xdg-config/gtk-4.0:ro",
     "--talk-name=org.freedesktop.Notifications",
-    "--talk-name=org.freedesktop.Flatpak"
+    "--talk-name=org.freedesktop.Flatpak",
+    "--talk-name=org.freedesktop.Settings",
+    "--metadata=X-DDP-Version=1"
   ],
   "modules": [
     {
       "name": "summit",
       "buildsystem": "simple",
       "build-commands": [
-        "pip3 install --prefix=/app .",
         "glib-compile-resources --target=src/resources/summit.gresource --sourcedir=src src/resources/summit.gresource.xml",
+        "mkdir -p /app/share/summit/resources",
         "install -D src/resources/summit.gresource /app/share/summit/resources/summit.gresource",
         "install -D debian/summit.desktop /app/share/applications/io.github.summit.desktop",
         "mkdir -p /app/share/summit/src",

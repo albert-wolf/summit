@@ -1,0 +1,44 @@
+{
+  "id" : "io.github.summit",
+  "runtime" : "org.gnome.Platform",
+  "runtime-version" : "47",
+  "runtime-commit" : "7d00756d7d5f6397c54f09ac69521991cff9e40a31e6eca6bf61ae9864149380",
+  "sdk" : "org.gnome.Sdk",
+  "sdk-commit" : "fb298c9ea35750b1037f755885076d16ffeed5462b4cee83705b6007474b0307",
+  "command" : "summit",
+  "modules" : [
+    {
+      "name" : "summit",
+      "buildsystem" : "simple",
+      "sources" : [
+        {
+          "path" : ".",
+          "type" : "dir"
+        }
+      ],
+      "build-commands" : [
+        "glib-compile-resources --target=src/resources/summit.gresource --sourcedir=src src/resources/summit.gresource.xml",
+        "mkdir -p /app/share/summit/resources",
+        "install -D src/resources/summit.gresource /app/share/summit/resources/summit.gresource",
+        "install -D debian/summit.desktop /app/share/applications/io.github.summit.desktop",
+        "mkdir -p /app/share/summit/src",
+        "cp src/*.py /app/share/summit/src/",
+        "mkdir -p /app/bin",
+        "echo '#!/bin/sh' > /app/bin/summit",
+        "echo 'exec python3 /app/share/summit/src/main.py \"$@\"' >> /app/bin/summit",
+        "chmod +x /app/bin/summit"
+      ]
+    }
+  ],
+  "finish-args" : [
+    "--share=network",
+    "--share=ipc",
+    "--socket=fallback-x11",
+    "--socket=wayland",
+    "--device=dri",
+    "--filesystem=home",
+    "--talk-name=org.freedesktop.Notifications",
+    "--talk-name=org.freedesktop.Flatpak"
+  ],
+  "source-date-epoch" : 1774828576
+}

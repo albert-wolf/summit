@@ -213,13 +213,6 @@ class SummitApp(Gtk.Application):
     def do_startup(self, *args):
         Gtk.Application.do_startup(self)
 
-        # Sync dark/light mode with system settings
-        settings = Gtk.Settings.get_default()
-        settings.set_property("gtk-application-prefer-dark-theme", True) # Default to dark for Nord style
-        
-        # In GTK 4.10+, this allows the app to follow the system color scheme automatically
-        # Without LibAdwaita, we might need to manually check it too
-        
         css_provider = Gtk.CssProvider()
         css_provider.load_from_resource("/io/github/summit/resources/style.css")
         Gtk.StyleContext.add_provider_for_display(

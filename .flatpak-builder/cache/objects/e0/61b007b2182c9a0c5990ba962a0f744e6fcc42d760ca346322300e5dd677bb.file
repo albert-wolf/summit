@@ -61,25 +61,18 @@ from gi.repository import Gtk, Gdk, Gio, GLib
 def register_resources():
     # Prioritize local resources for development
     resource_file = Path(__file__).parent / "resources" / "summit.gresource"
-    
-    # Locations to check for the resource bundle
-    search_paths = [
-        resource_file,
-        Path("/app/share/summit/resources/summit.gresource"),    # Flatpak location
-        Path("/usr/share/summit/resources/summit.gresource")    # Native system location
-    ]
+    if not resource_file.exists():
+        resource_file = Path("/usr/share/summit/resources/summit.gresource")
 
-    for path in search_paths:
-        if path.exists():
-            try:
-                resource = Gio.Resource.load(str(path))
-                Gio.resources_register(resource)
-                logger.info(f"Successfully registered resources from {path}")
-                return
-            except Exception as e:
-                logger.error(f"Error loading resources from {path}: {e}")
-    
-    logger.warning("Resource file not found in any standard location.")
+    if resource_file.exists():
+        try:
+            resource = Gio.Resource.load(str(resource_file))
+            Gio.resources_register(resource)
+            logger.info(f"Successfully registered resources from {resource_file}")
+        except Exception as e:
+            logger.error(f"Error loading resources: {e}")
+    else:
+        logger.warning(f"Resource file not found: {resource_file}")
 
 
 register_resources()
@@ -213,13 +206,6 @@ class SummitApp(Gtk.Application):
     def do_startup(self, *args):
         Gtk.Application.do_startup(self)
 
-        # Sync dark/light mode with system settings
-        settings = Gtk.Settings.get_default()
-        settings.set_property("gtk-application-prefer-dark-theme", True) # Default to dark for Nord style
-        
-        # In GTK 4.10+, this allows the app to follow the system color scheme automatically
-        # Without LibAdwaita, we might need to manually check it too
-        
         css_provider = Gtk.CssProvider()
         css_provider.load_from_resource("/io/github/summit/resources/style.css")
         Gtk.StyleContext.add_provider_for_display(
@@ -234,10 +220,10 @@ class SummitApp(Gtk.Application):
                 if not self.manager.is_installed():
                     dialog = Gtk.AlertDialog()
                     dialog.set_message("NordVPN Not Installed")
-                    dialog.set_detail(
+                    dialog.set_detail_text(
                         "Please install NordVPN first:\nsudo apt install nordvpn"
                     )
-                    dialog.show(None)
+                    dialog.present(None)
                     self.quit()
                     return
 
@@ -300,10 +286,10 @@ class SummitApp(Gtk.Application):
         if not is_logged_in:
             dialog = Gtk.AlertDialog()
             dialog.set_message("Not Logged In")
-            dialog.set_detail(
+            dialog.set_detail_text(
                 "Please log in to NordVPN first:\nRun 'nordvpn login' in a terminal"
             )
-            dialog.show(self.window)
+            dialog.present(self.window)
         return False
 
     def load_config(self):
