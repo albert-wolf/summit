@@ -30,7 +30,7 @@ class SummitManager:
 
         try:
             result = subprocess.run(
-                cmd, capture_output=True, text=True, timeout=10
+                cmd, capture_output=True, text=True, timeout=30
             )
             return result.stdout, result.stderr, result.returncode
         except subprocess.TimeoutExpired:

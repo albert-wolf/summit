@@ -63,7 +63,7 @@ wheels = [
 
 [[package]]
 name = "summit"
-version = "1.0.0"
+version = "0.8.3"
 source = { virtual = "." }
 dependencies = [
     { name = "pygobject" },

@@ -25,7 +25,6 @@ class SettingsPane(Gtk.Box):
     threat_protection_lite_switch = Gtk.Template.Child()
     obfuscate_switch = Gtk.Template.Child()
     notify_switch = Gtk.Template.Child()
-    meshnet_switch = Gtk.Template.Child()
     technology_dropdown = Gtk.Template.Child()
     protocol_dropdown = Gtk.Template.Child()
 
@@ -38,6 +37,7 @@ class SettingsPane(Gtk.Box):
             raise
 
         self.manager = manager
+        self.app = None
         self.config = config
         self.settings = {}
         self._is_loading = False
@@ -52,7 +52,6 @@ class SettingsPane(Gtk.Box):
             "Threat Protection Lite": self.threat_protection_lite_switch,
             "Obfuscate": self.obfuscate_switch,
             "Notify": self.notify_switch,
-            "Meshnet": self.meshnet_switch,
         }
 
         # Store handler IDs for blocking
@@ -98,6 +97,10 @@ class SettingsPane(Gtk.Box):
 
         # Load settings and locations
         self.load_initial_data()
+
+    def set_app_ref(self, app):
+        """Set reference to the main application."""
+        self.app = app
 
     def load_initial_data(self):
         """Load settings and country list."""
@@ -276,7 +279,6 @@ class SettingsPane(Gtk.Box):
         else:
             # Update sensitivity of location dropdown if Auto-connect changed
             if setting_key == "Auto-connect":
-                enabled = switch.get_active()
                 self.autoconnect_location_dropdown.set_sensitive(enabled)
                 loc_selected = self.autoconnect_location_dropdown.get_selected() > 0
                 self.autoconnect_city_dropdown.set_sensitive(enabled and loc_selected)

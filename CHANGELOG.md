@@ -1,19 +1,19 @@
 # Summit Changelog
 
-## v0.8.2 - Cross-Platform Compatibility & Theming (Current)
+## v0.8.3 - Meshnet Stability & Interface Optimization (Current)
 
 ### Features Implemented
-- ✅ **Flatpak Host Escape**: Implemented `flatpak-spawn --host` logic for NordVPN CLI communication inside sandbox.
-- ✅ **Dark Mode Sync**: Added Flatpak permissions and Python logic to synchronize with system light/dark mode.
-- ✅ **Debian/Ubuntu Optimization**: Relaxed `nordvpn` dependency to `Recommends` to solve installation failures on Ubuntu/Debian machines without the NordVPN repository.
-- ✅ **Environment Detection**: Automatic detection of Flatpak environment for seamless command execution.
+- ✅ **Meshnet UX Refactor**: Removed the redundant Meshnet toggle from the Settings pane to streamline the interface and establish the Meshnet tab as the single source of truth.
+- ✅ **Cross-Pane Synchronization**: Improved state persistence and notification logic to ensure the Meshnet UI is always accurate.
+- ✅ **Automatic Tab Refresh**: Relevant tabs now automatically refresh their data from the CLI when selected.
+- ✅ **Increased Command Timeout**: Increased NordVPN CLI timeout to 30s to accommodate slow Meshnet initialization.
 
 ### Fixes Applied
-- **Fixed**: Critical `Gtk.AlertDialog` API crashes (changed `present`/`set_body` to `show`/`set_detail`).
-- **Fixed**: Missing `Path` import in `SummitManager` for sandbox detection.
-- **Fixed**: GResource path resolution for Flatpak environments.
+- **Fixed**: Theme synchronization; application now correctly respects system Light/Dark mode settings (LMDE/Cinnamon/Ubuntu).
+- **Fixed**: Signal loop when Meshnet toggle failed and reverted.
+- **Improved**: UI stability during concurrent state updates and background polling.
 
-## v0.8.1 - Patch Release with Fixes
+## v0.8.2 - Cross-Platform Compatibility & Theming
   - `Kill Switch` → `killswitch`
   - `Auto-connect` → `autoconnect`
   - `LAN Discovery` → `lan-discovery`

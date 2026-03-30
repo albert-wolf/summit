@@ -24,11 +24,16 @@ class MeshnetPane(Gtk.Box):
         self.init_template()
 
         self.manager = manager
+        self.app = None
         self.meshnet_enabled = False
         self.initializing = True
 
         # Load initial state asynchronously to avoid blocking main thread on startup
         self.load_meshnet_state_async()
+
+    def set_app_ref(self, app):
+        """Set reference to the main application."""
+        self.app = app
 
     def load_meshnet_state(self):
         """Load meshnet state synchronously."""
@@ -233,9 +238,15 @@ class MeshnetPane(Gtk.Box):
                 self.this_device_list.remove_all()
                 self.connected_peers_list.remove_all()
                 self.disconnected_peers_list.remove_all()
+            
+            # Notify app to sync other panes (like Settings)
+            if self.app and hasattr(self.app, "on_meshnet_state_changed"):
+                self.app.on_meshnet_state_changed(enabled)
         else:
-            # Revert switch on failure
+            # Revert switch on failure with guard to prevent loop
+            self.initializing = True
             switch.set_active(not enabled)
+            self.initializing = False
 
         return False
 

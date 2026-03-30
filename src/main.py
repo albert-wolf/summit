@@ -150,6 +150,12 @@ class SummitWindow(Gtk.ApplicationWindow):
                         btn.set_active(False)
                 self.main_stack.set_visible_child_name(tab_name)
                 self.update_right_pane_visibility()
+                
+                # Refresh data when switching to relevant tabs
+                if tab_name == "settings" and hasattr(self, "settings_pane"):
+                    self.settings_pane.load_settings()
+                elif tab_name == "meshnet" and hasattr(self, "meshnet_pane"):
+                    self.meshnet_pane.load_meshnet_state_async()
             finally:
                 self._updating_tabs = False
         else:
@@ -202,7 +208,7 @@ class SummitApp(Gtk.Application):
         dialog = Gtk.AboutDialog()
         dialog.set_transient_for(self.window)
         dialog.set_program_name("Summit")
-        dialog.set_version("0.8.2")
+        dialog.set_version("0.8.3")
         dialog.set_authors(["Wolf-GitHub <Wolf-GitHub@pm.me>"])
         dialog.set_comments("A GTK4 NordVPN Client for LMDE 7")
         dialog.set_website("https://github.com/Wolf-GitHub/Summit")
@@ -213,13 +219,10 @@ class SummitApp(Gtk.Application):
     def do_startup(self, *args):
         Gtk.Application.do_startup(self)
 
-        # Sync dark/light mode with system settings
+        # Sync appearance with system settings (Light/Dark mode)
         settings = Gtk.Settings.get_default()
-        settings.set_property("gtk-application-prefer-dark-theme", True) # Default to dark for Nord style
         
-        # In GTK 4.10+, this allows the app to follow the system color scheme automatically
-        # Without LibAdwaita, we might need to manually check it too
-        
+        # Apply custom styling from GResource
         css_provider = Gtk.CssProvider()
         css_provider.load_from_resource("/io/github/summit/resources/style.css")
         Gtk.StyleContext.add_provider_for_display(
@@ -264,9 +267,11 @@ class SummitApp(Gtk.Application):
         self.servers_pane.set_app_ref(self)
 
         self.settings_pane = SettingsPane(self.manager, self.config)
+        self.settings_pane.set_app_ref(self)
 
         self.ports_pane = PortsPane(self.manager)
         self.meshnet_pane = MeshnetPane(self.manager)
+        self.meshnet_pane.set_app_ref(self)
 
         self.recent_pane = RecentPane(self.manager)
         self.recent_pane.set_app_ref(self)
@@ -368,6 +373,20 @@ class SummitApp(Gtk.Application):
 
     def on_status_change(self, status):
         pass
+
+    def on_meshnet_state_changed(self, enabled: bool):
+        """Called when meshnet state is changed in the Meshnet pane."""
+        # Small delay to let CLI state settle before refresh
+        def refresh():
+            # Refresh meshnet pane to sync its switch and peer list
+            if hasattr(self, "meshnet_pane"):
+                if enabled:
+                    self.meshnet_pane.load_meshnet_peers()
+                else:
+                    self.meshnet_pane.apply_meshnet_state(False, [])
+            return False
+
+        GLib.timeout_add(1000, refresh)
 
     def switch_to_servers_tab(self):
         self.window.tab_buttons["servers"].set_active(True)

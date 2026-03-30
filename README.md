@@ -1,4 +1,4 @@
-# Summit — GTK4 NordVPN GUI (v0.8.2 Beta)
+# Summit — GTK4 NordVPN GUI (v0.8.3 Beta)
 An unofficial, community-developed, professional GTK4 graphical interface for the NordVPN command-line tool on Linux.
 
 <img width="967" height="629" alt="Screenshot from 2026-03-29 02-07-40" src="https://github.com/user-attachments/assets/58a3c263-2851-49af-8d59-0f723daa659f" />
