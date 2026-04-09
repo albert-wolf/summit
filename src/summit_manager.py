@@ -23,15 +23,13 @@ class SummitManager:
     def run_command(self, args: List[str]) -> Tuple[str, str, int]:
         """Run nordvpn command, return (stdout, stderr, returncode)."""
         cmd = [self.nord_path] + args
-        
+
         # If running inside a Flatpak, spawn on the host
         if self._is_flatpak:
             cmd = ["flatpak-spawn", "--host", "nordvpn"] + args
 
         try:
-            result = subprocess.run(
-                cmd, capture_output=True, text=True, timeout=30
-            )
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
             return result.stdout, result.stderr, result.returncode
         except subprocess.TimeoutExpired:
             return "", "Command timed out", 1
@@ -193,7 +191,9 @@ class SummitManager:
             return False, "Key and value are required"
 
         command_key = command_map.get(key, key.lower())
-        stdout, stderr, returncode = self.run_command(["set", command_key, value])
+        # Split value into multiple arguments (e.g., "on United_States Saint_Louis")
+        args = ["set", command_key] + value.split()
+        stdout, stderr, returncode = self.run_command(args)
         self.clear_cache()
         return self._command_result(stdout, stderr, returncode)
 

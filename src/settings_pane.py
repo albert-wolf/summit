@@ -196,7 +196,7 @@ class SettingsPane(Gtk.Box):
 
             ac_value = settings.get("Auto-connect", "disabled")
             ac_enabled = ac_value.lower().startswith("enabled")
-            
+
             # Decouple selection from enabled state: Always prefer config/last selection
             # Try to parse CLI output first (rarely has location details)
             country_match = None
@@ -208,7 +208,7 @@ class SettingsPane(Gtk.Box):
                 country_match = parts[1]
                 if len(parts) > 2:
                     city_match = parts[2]
-            
+
             # Fallback to persistent config (ALWAYS, even if disabled)
             if not country_match:
                 country_match = self.config.get("autoconnect_country")
@@ -234,7 +234,9 @@ class SettingsPane(Gtk.Box):
             # Sensitivity
             self.protocol_dropdown.set_sensitive(tech == "OPENVPN")
             self.autoconnect_location_dropdown.set_sensitive(ac_enabled)
-            self.autoconnect_city_dropdown.set_sensitive(ac_enabled and self.autoconnect_location_dropdown.get_selected() > 0)
+            self.autoconnect_city_dropdown.set_sensitive(
+                ac_enabled and self.autoconnect_location_dropdown.get_selected() > 0
+            )
         finally:
             self._is_loading = False
 
@@ -279,9 +281,10 @@ class SettingsPane(Gtk.Box):
         else:
             # Update sensitivity of location dropdown if Auto-connect changed
             if setting_key == "Auto-connect":
-                self.autoconnect_location_dropdown.set_sensitive(enabled)
+                active = switch.get_active()
+                self.autoconnect_location_dropdown.set_sensitive(active)
                 loc_selected = self.autoconnect_location_dropdown.get_selected() > 0
-                self.autoconnect_city_dropdown.set_sensitive(enabled and loc_selected)
+                self.autoconnect_city_dropdown.set_sensitive(active and loc_selected)
         return False
 
     def on_technology_changed(self, dropdown, pspec):
@@ -352,9 +355,12 @@ class SettingsPane(Gtk.Box):
 
     def _load_autoconnect_cities(self, country, select_city=None, trigger_apply=False):
         """Load cities for auto-connect country selection."""
+
         def worker():
             cities = self.manager.get_cities(country)
-            GLib.idle_add(self._on_autoconnect_cities_loaded, cities, country, select_city, trigger_apply)
+            GLib.idle_add(
+                self._on_autoconnect_cities_loaded, cities, country, select_city, trigger_apply
+            )
 
         thread = threading.Thread(target=worker, daemon=True)
         thread.start()

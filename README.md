@@ -1,4 +1,4 @@
-# Summit — GTK4 NordVPN GUI (v0.8.3 Beta)
+# Summit — GTK4 NordVPN GUI (v0.8.4 Beta)
 An unofficial, community-developed, professional GTK4 graphical interface for the NordVPN command-line tool on Linux.
 
 <img width="967" height="629" alt="Screenshot from 2026-03-29 02-07-40" src="https://github.com/user-attachments/assets/58a3c263-2851-49af-8d59-0f723daa659f" />
@@ -29,6 +29,8 @@ An unofficial, community-developed, professional GTK4 graphical interface for th
 - **Standards & Quality**:
   - **Global Development Manifest v2.1**: Adheres to high-tier professional standards for environment, coding, and automated workflows.
   - **Logical Atomic Protocol**: Clean, milestone-based git history for maximum stability and bisectability.
+  - **Native Theme Synchronization**: Automatic inheritance of host GTK themes (Cinnamon/Mint-Y/Yaru) with purified CSS and native WindowControls.
+  - **Advanced Location Parsing**: Intelligent handling of multi-word country/city names (e.g., "United States Saint Louis") for Auto-connect features.
 
 ## Requirements
 
@@ -43,7 +45,7 @@ An unofficial, community-developed, professional GTK4 graphical interface for th
 Download the latest release from the `dist/` folder or the Releases page.
 
 ```bash
-sudo dpkg -i dist/summit_0.8.1_all.deb
+sudo dpkg -i dist/summit_0.8.4_all.deb
 sudo apt-get install -f  # Resolve any missing dependencies
 summit
 ```

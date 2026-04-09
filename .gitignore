@@ -45,3 +45,7 @@ build/
 summit_*.deb
 dist/
 .superpowers/
+
+# Project context and plans
+GEMINI.md
+docs/plans/

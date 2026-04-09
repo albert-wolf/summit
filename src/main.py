@@ -61,12 +61,12 @@ from gi.repository import Gtk, Gdk, Gio, GLib
 def register_resources():
     # Prioritize local resources for development
     resource_file = Path(__file__).parent / "resources" / "summit.gresource"
-    
+
     # Locations to check for the resource bundle
     search_paths = [
         resource_file,
-        Path("/app/share/summit/resources/summit.gresource"),    # Flatpak location
-        Path("/usr/share/summit/resources/summit.gresource")    # Native system location
+        Path("/app/share/summit/resources/summit.gresource"),  # Flatpak location
+        Path("/usr/share/summit/resources/summit.gresource"),  # Native system location
     ]
 
     for path in search_paths:
@@ -78,7 +78,7 @@ def register_resources():
                 return
             except Exception as e:
                 logger.error(f"Error loading resources from {path}: {e}")
-    
+
     logger.warning("Resource file not found in any standard location.")
 
 
@@ -150,7 +150,7 @@ class SummitWindow(Gtk.ApplicationWindow):
                         btn.set_active(False)
                 self.main_stack.set_visible_child_name(tab_name)
                 self.update_right_pane_visibility()
-                
+
                 # Refresh data when switching to relevant tabs
                 if tab_name == "settings" and hasattr(self, "settings_pane"):
                     self.settings_pane.load_settings()
@@ -208,7 +208,7 @@ class SummitApp(Gtk.Application):
         dialog = Gtk.AboutDialog()
         dialog.set_transient_for(self.window)
         dialog.set_program_name("Summit")
-        dialog.set_version("0.8.3")
+        dialog.set_version("0.8.4")
         dialog.set_authors(["Wolf-GitHub <Wolf-GitHub@pm.me>"])
         dialog.set_comments("A GTK4 NordVPN Client for LMDE 7")
         dialog.set_website("https://github.com/Wolf-GitHub/Summit")
@@ -219,9 +219,6 @@ class SummitApp(Gtk.Application):
     def do_startup(self, *args):
         Gtk.Application.do_startup(self)
 
-        # Sync appearance with system settings (Light/Dark mode)
-        settings = Gtk.Settings.get_default()
-        
         # Apply custom styling from GResource
         css_provider = Gtk.CssProvider()
         css_provider.load_from_resource("/io/github/summit/resources/style.css")
@@ -237,9 +234,7 @@ class SummitApp(Gtk.Application):
                 if not self.manager.is_installed():
                     dialog = Gtk.AlertDialog()
                     dialog.set_message("NordVPN Not Installed")
-                    dialog.set_detail(
-                        "Please install NordVPN first:\nsudo apt install nordvpn"
-                    )
+                    dialog.set_detail("Please install NordVPN first:\nsudo apt install nordvpn")
                     dialog.show(None)
                     self.quit()
                     return
@@ -305,9 +300,7 @@ class SummitApp(Gtk.Application):
         if not is_logged_in:
             dialog = Gtk.AlertDialog()
             dialog.set_message("Not Logged In")
-            dialog.set_detail(
-                "Please log in to NordVPN first:\nRun 'nordvpn login' in a terminal"
-            )
+            dialog.set_detail("Please log in to NordVPN first:\nRun 'nordvpn login' in a terminal")
             dialog.show(self.window)
         return False
 
@@ -376,6 +369,7 @@ class SummitApp(Gtk.Application):
 
     def on_meshnet_state_changed(self, enabled: bool):
         """Called when meshnet state is changed in the Meshnet pane."""
+
         # Small delay to let CLI state settle before refresh
         def refresh():
             # Refresh meshnet pane to sync its switch and peer list

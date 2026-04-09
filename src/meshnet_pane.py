@@ -238,7 +238,7 @@ class MeshnetPane(Gtk.Box):
                 self.this_device_list.remove_all()
                 self.connected_peers_list.remove_all()
                 self.disconnected_peers_list.remove_all()
-            
+
             # Notify app to sync other panes (like Settings)
             if self.app and hasattr(self.app, "on_meshnet_state_changed"):
                 self.app.on_meshnet_state_changed(enabled)

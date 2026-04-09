@@ -1,26 +1,56 @@
+/* Summit Surgical CSS - Only custom navigation and branding */
+
+/* 1. App Title Branding - Matches "Quarry" aesthetic */
+label.app-title {
+    font-weight: 600;
+    margin-left: 8px;
+}
+
+/* 2. Tab Button Navigation Logic */
+/* This transforms standard ToggleButtons into a clean navigation bar */
+.tab-button-group {
+    background-color: transparent;
+    margin: 0px 0px 0px 12px;
+}
+
+.tab-button-group .tab-button {
+    background-color: transparent;
+    padding: 10px 14px;
+    border-radius: 0px;
+    border: none;
+    border-bottom: 2px solid transparent;
+    font-weight: 600;
+    min-width: 60px;
+    transition: all 200ms ease;
+}
+
+.tab-button-group .tab-button:hover {
+    background-color: alpha(@theme_fg_color, 0.05);
+}
+
+.tab-button-group .tab-button:checked {
+    background-color: alpha(@theme_selected_bg_color, 0.1);
+    color: @theme_selected_bg_color;
+    border-bottom-color: @theme_selected_bg_color;
+}
+
+/* 3. Layout & Grouping Styles */
+/* These provide the structure for the different panes while respecting system colors */
 .pane-box {
-    background-color: alpha(@theme_bg_color, 0.05);
-    border: 1px solid alpha(@theme_fg_color, 0.1);
-    border-radius: 8px;
-    margin: 8px;
-    padding: 4px;
+    background-color: @theme_base_color;
+    border: 1px solid @borders;
+    border-radius: 6px;
+    padding: 12px;
+    margin: 4px;
 }
 
-.dim-label {
-    opacity: 0.6;
-    font-size: 0.9rem;
+label.heading {
     font-weight: bold;
-    margin-bottom: 4px;
+    font-size: 1.2em;
 }
 
-list {
-    background: transparent;
-}
-
-list > row {
-    padding: 2px;
-}
-
-list > row:not(:last-child) {
-    border-bottom: 1px solid alpha(@theme_fg_color, 0.05);
+/* 4. Functional Utilities */
+.error-text {
+    color: #ff4444;
+    font-weight: bold;
 }

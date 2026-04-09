@@ -1,19 +1,13 @@
 # Summit Changelog
 
-## v0.8.3 - Meshnet Stability & Interface Optimization (Current)
-
-### Features Implemented
-- ✅ **Meshnet UX Refactor**: Removed the redundant Meshnet toggle from the Settings pane to streamline the interface and establish the Meshnet tab as the single source of truth.
-- ✅ **Cross-Pane Synchronization**: Improved state persistence and notification logic to ensure the Meshnet UI is always accurate.
-- ✅ **Automatic Tab Refresh**: Relevant tabs now automatically refresh their data from the CLI when selected.
-- ✅ **Increased Command Timeout**: Increased NordVPN CLI timeout to 30s to accommodate slow Meshnet initialization.
+## v0.8.4 - Auto-connect & Parsing Fixes (Current)
 
 ### Fixes Applied
-- **Fixed**: Theme synchronization; application now correctly respects system Light/Dark mode settings (LMDE/Cinnamon/Ubuntu).
-- **Fixed**: Signal loop when Meshnet toggle failed and reverted.
-- **Improved**: UI stability during concurrent state updates and background polling.
+- **Fixed**: NordVPN CLI `set autoconnect` command now correctly handles multi-word locations (e.g., "United States Saint Louis").
+- **Fixed**: Correctly parse multi-word country/city names by splitting arguments before execution.
+- **Improved**: UI/UX stability on LMDE/Cinnamon; purified CSS and explicitly declared WindowControls to ensure native theme inheritance and eliminate visual artifacts.
 
-## v0.8.2 - Cross-Platform Compatibility & Theming
+## v0.8.3 - Meshnet Stability & Interface Optimization
   - `Kill Switch` → `killswitch`
   - `Auto-connect` → `autoconnect`
   - `LAN Discovery` → `lan-discovery`
