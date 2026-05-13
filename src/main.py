@@ -90,7 +90,6 @@ from servers_pane import ServersPane
 from settings_pane import SettingsPane
 from ports_pane import PortsPane
 from meshnet_pane import MeshnetPane
-from recent_pane import RecentPane
 from toast import ToastOverlay
 
 
@@ -103,8 +102,6 @@ class SummitWindow(Gtk.ApplicationWindow):
     header_bar = Gtk.Template.Child("header_bar")
     main_stack = Gtk.Template.Child("main_stack")
     toast_overlay = Gtk.Template.Child("toast_overlay")
-    content_paned = Gtk.Template.Child("content_paned")
-    recent_pane_container = Gtk.Template.Child("recent_pane_container")
 
     status_btn = Gtk.Template.Child("status_btn")
     servers_btn = Gtk.Template.Child("servers_btn")
@@ -149,7 +146,6 @@ class SummitWindow(Gtk.ApplicationWindow):
                     if name != tab_name:
                         btn.set_active(False)
                 self.main_stack.set_visible_child_name(tab_name)
-                self.update_right_pane_visibility()
 
                 # Refresh data when switching to relevant tabs
                 if tab_name == "settings" and hasattr(self, "settings_pane"):
@@ -164,15 +160,6 @@ class SummitWindow(Gtk.ApplicationWindow):
                 button.set_active(True)
             finally:
                 self._updating_tabs = False
-
-    def update_right_pane_visibility(self):
-        active_tab = self.main_stack.get_visible_child_name()
-        if active_tab == "status":
-            self.recent_pane_container.set_visible(True)
-            self.content_paned.set_position(550)
-        else:
-            self.recent_pane_container.set_visible(False)
-            self.content_paned.set_position(9999)
 
 
 class SummitApp(Gtk.Application):
@@ -268,16 +255,11 @@ class SummitApp(Gtk.Application):
         self.meshnet_pane = MeshnetPane(self.manager)
         self.meshnet_pane.set_app_ref(self)
 
-        self.recent_pane = RecentPane(self.manager)
-        self.recent_pane.set_app_ref(self)
-        self.recent_pane.refresh_favorites_display()
-
         self.window.status_pane_box.append(self.status_pane)
         self.window.servers_pane_box.append(self.servers_pane)
         self.window.settings_pane_box.append(self.settings_pane)
         self.window.ports_pane_box.append(self.ports_pane)
         self.window.meshnet_pane_box.append(self.meshnet_pane)
-        self.window.recent_pane_container.append(self.recent_pane)
 
         self.start_polling()
         GLib.idle_add(self.check_login_status)
@@ -354,8 +336,6 @@ class SummitApp(Gtk.Application):
                 status = self.manager.get_status()
                 if hasattr(self, "status_pane"):
                     GLib.idle_add(self.status_pane.apply_status, status)
-                if hasattr(self, "recent_pane"):
-                    GLib.idle_add(self.recent_pane.apply_status, status)
             except Exception as e:
                 logger.error(f"Poll failed: {e}")
 

@@ -59,49 +59,34 @@ template $SummitWindow : Gtk.ApplicationWindow {
   }
 
   Overlay toast_overlay {
-    Paned content_paned {
-      orientation: horizontal;
-      wide-handle: true;
-      position: 550;
+    Stack main_stack {
       vexpand: true;
       hexpand: true;
+      transition-type: crossfade;
 
-      [start]
-      Stack main_stack {
-        vexpand: true;
-        hexpand: true;
-        transition-type: crossfade;
-
-        StackPage {
-          name: "status";
-          child: Box status_pane_box {};
-        }
-
-        StackPage {
-          name: "servers";
-          child: Box servers_pane_box {};
-        }
-
-        StackPage {
-          name: "settings";
-          child: Box settings_pane_box {};
-        }
-
-        StackPage {
-          name: "ports";
-          child: Box ports_pane_box {};
-        }
-
-        StackPage {
-          name: "meshnet";
-          child: Box meshnet_pane_box {};
-        }
+      StackPage {
+        name: "status";
+        child: Box status_pane_box {};
       }
 
-      [end]
-      Box recent_pane_container {
-        width-request: 250;
-        hexpand: false;
+      StackPage {
+        name: "servers";
+        child: Box servers_pane_box {};
+      }
+
+      StackPage {
+        name: "settings";
+        child: Box settings_pane_box {};
+      }
+
+      StackPage {
+        name: "ports";
+        child: Box ports_pane_box {};
+      }
+
+      StackPage {
+        name: "meshnet";
+        child: Box meshnet_pane_box {};
       }
     }
   }
