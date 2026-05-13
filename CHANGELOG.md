@@ -1,5 +1,20 @@
 # Summit Changelog
 
+## v0.8.5 - Status Tab Redesign & Integrated Dashboard
+
+### Features & UI Updates
+- **Complete Redesign**: The Status tab is now a centralized dashboard with a modern, high-impact aesthetic.
+- **Dynamic Hero Section**: Real-time status icons (Unsecured/Connected) with pulsing animations and large, bold status labels.
+- **Telemetry Dashboard**: Added "Network State" and "Session State" cards for at-a-glance connection details (IP, Protocol, Server ID, Uptime, Transfer).
+- **Integrated Lists**: Favorites and Recent connections are now directly accessible within the Status tab via a segmented control (FAVORITES | RECENT).
+- **Programmatic UI**: Transitioned the Status pane to a pure Python implementation, following modern GTK4 patterns and improving codebase maintainability.
+- **Layout Optimization**: Removed the redundant right-side Recent sidebar, allowing more horizontal space for all tabs and a cleaner, focused layout.
+
+### Technical Improvements
+- Migrated history and favorites management logic from `RecentPane` to `StatusPane`.
+- Updated `style.css` with dedicated classes for telemetry cards, hero animations, and list row cards.
+- Cleaned up `main.py` and `main_window.blp` to remove legacy sidebar and Paned layout logic.
+
 ## v0.8.4 - Auto-connect & Parsing Fixes (Current)
 
 ### Fixes Applied
