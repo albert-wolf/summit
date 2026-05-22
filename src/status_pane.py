@@ -48,70 +48,98 @@ class StatusPane(Gtk.Box):
         hero_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=16)
         hero_box.set_halign(Gtk.Align.CENTER)
 
-        # Status indicator row (The literal mockup state showing OR)
-        # Note: We implement this as a dynamic display that emphasizes current state
-        # but follows the layout: [Unsecured Circle] [Text] [Connected Circle]
-        status_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=48)
-        status_row.set_halign(Gtk.Align.CENTER)
+        # Status indicator stack (Shows only active state)
+        self.hero_stack = Gtk.Stack()
+        self.hero_stack.set_transition_type(Gtk.StackTransitionType.CROSSFADE)
+        self.hero_stack.set_halign(Gtk.Align.CENTER)
 
-        # Left: Unsecured Box
-        unsecured_vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
+        # 1. Unsecured State Page
+        unsecured_hbox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=24)
+        unsecured_hbox.set_halign(Gtk.Align.CENTER)
+        unsecured_hbox.set_valign(Gtk.Align.CENTER)
+
         self.unsecured_circle = Gtk.Box()
         self.unsecured_circle.add_css_class("hero-circle")
         self.unsecured_circle.add_css_class("unsecured")
-        unsecured_vbox.append(self.unsecured_circle)
-        
+        self.unsecured_circle.set_halign(Gtk.Align.CENTER)
+        self.unsecured_circle.set_valign(Gtk.Align.CENTER)
+        unsecured_hbox.append(self.unsecured_circle)
+
         self.unsecured_label = Gtk.Label(label="UNSECURED")
         self.unsecured_label.add_css_class("hero-label")
-        unsecured_vbox.append(self.unsecured_label)
-        status_row.append(unsecured_vbox)
+        unsecured_hbox.append(self.unsecured_label)
+        self.hero_stack.add_named(unsecured_hbox, "unsecured")
 
-        # Center: OR
-        or_label = Gtk.Label(label="OR")
-        or_label.add_css_class("hero-or")
-        status_row.append(or_label)
+        # 2. Connected State Page
+        connected_hbox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=24)
+        connected_hbox.set_halign(Gtk.Align.CENTER)
+        connected_hbox.set_valign(Gtk.Align.CENTER)
 
-        # Right: Connected Box
-        connected_vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
-        
-        # Icon HBox to place pulsing ring next to circle
-        icon_hbox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
-        icon_hbox.set_halign(Gtk.Align.CENTER)
-        
+        # Overlay to place pulsing ring BEHIND the circle
+        connected_overlay = Gtk.Overlay()
+        connected_overlay.set_halign(Gtk.Align.CENTER)
+        connected_overlay.set_valign(Gtk.Align.CENTER)
+
         self.pulsing_ring = Gtk.Box()
         self.pulsing_ring.add_css_class("pulsing-ring")
+        self.pulsing_ring.set_halign(Gtk.Align.CENTER)
         self.pulsing_ring.set_valign(Gtk.Align.CENTER)
-        icon_hbox.append(self.pulsing_ring)
-        
+        connected_overlay.set_child(self.pulsing_ring)
+
         self.connected_circle = Gtk.Box()
         self.connected_circle.add_css_class("hero-circle")
         self.connected_circle.add_css_class("connected")
-        icon_hbox.append(self.connected_circle)
-        
-        connected_vbox.append(icon_hbox)
+        self.connected_circle.set_halign(Gtk.Align.CENTER)
+        self.connected_circle.set_valign(Gtk.Align.CENTER)
+        connected_overlay.add_overlay(self.connected_circle)
+
+        connected_hbox.append(connected_overlay)
 
         self.connected_label = Gtk.Label(label="CONNECTED")
         self.connected_label.add_css_class("hero-label")
-        connected_vbox.append(self.connected_label)
-        status_row.append(connected_vbox)
+        connected_hbox.append(self.connected_label)
+        self.hero_stack.add_named(connected_hbox, "connected")
 
-        hero_box.append(status_row)
+        # 3. Connecting State Page
+        connecting_hbox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=24)
+        connecting_hbox.set_halign(Gtk.Align.CENTER)
+        connecting_hbox.set_valign(Gtk.Align.CENTER)
+
+        self.connecting_spinner = Gtk.Spinner()
+        self.connecting_spinner.set_size_request(70, 70)
+        connecting_hbox.append(self.connecting_spinner)
+
+        self.connecting_label = Gtk.Label(label="CONNECTING...")
+        self.connecting_label.add_css_class("hero-label")
+        connecting_hbox.append(self.connecting_label)
+        self.hero_stack.add_named(connecting_hbox, "connecting")
+
+        hero_box.append(self.hero_stack)
 
         # Button Row
         btn_hbox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
         btn_hbox.set_halign(Gtk.Align.CENTER)
 
+        # Linked Control Pill (Fusion of Connect and Reconnect)
+        self.control_pill = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=0)
+        self.control_pill.add_css_class("linked")
+
         self.connect_btn = Gtk.Button(label="Connect")
         self.connect_btn.add_css_class("btn-connect")
+        self.connect_btn.set_margin_start(0)
+        self.connect_btn.set_margin_end(0)
         self.connect_btn.connect("clicked", self.on_connect_clicked)
-        btn_hbox.append(self.connect_btn)
+        self.control_pill.append(self.connect_btn)
 
         self.reconnect_btn = Gtk.Button()
         self.reconnect_btn.set_icon_name("view-refresh-symbolic")
         self.reconnect_btn.add_css_class("btn-refresh")
+        self.reconnect_btn.set_margin_start(0)
+        self.reconnect_btn.set_margin_end(0)
         self.reconnect_btn.connect("clicked", self.on_reconnect_clicked)
-        btn_hbox.append(self.reconnect_btn)
+        self.control_pill.append(self.reconnect_btn)
 
+        btn_hbox.append(self.control_pill)
         hero_box.append(btn_hbox)
         self.append(hero_box)
 
@@ -121,50 +149,64 @@ class StatusPane(Gtk.Box):
         dashboard_hbox.set_halign(Gtk.Align.CENTER)
 
         # Left Column: Network State
-        self.network_grid = self._create_telemetry_card("Network State", [
-            ("Public IP", "ip_val"),
-            ("Protocol (UDP/TCP)", "proto_val"),
-            ("Tech", "tech_val")
-        ])
+        self.network_grid = self._create_telemetry_card(
+            "Network State",
+            [("Public IP", "ip_val"), ("Protocol (UDP/TCP)", "proto_val"), ("Tech", "tech_val")],
+        )
         dashboard_hbox.append(self.network_grid)
 
         # Right Column: Session State
-        self.session_grid = self._create_telemetry_card("Session State", [
-            ("Server ID", "server_val"),
-            ("Uptime", "uptime_val"),
-            ("Transfer (Up/Down)", "transfer_val")
-        ])
+        self.session_grid = self._create_telemetry_card(
+            "Session State",
+            [
+                ("Server ID", "server_val"),
+                ("Uptime", "uptime_val"),
+                ("Transfer (Up/Down)", "transfer_val"),
+            ],
+        )
         dashboard_hbox.append(self.session_grid)
 
         self.append(dashboard_hbox)
 
     def _create_telemetry_card(self, title, rows):
-        """Helper to create a styled telemetry grid."""
-        card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
-        card.add_css_class("telemetry-card")
+        """Helper to create a styled nested telemetry card."""
+        # Outer Card: Encloses both Title and the Inner Frame
+        outer_card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+        outer_card.add_css_class("telemetry-card-outer")
 
         label_title = Gtk.Label(label=title)
         label_title.add_css_class("heading")
         label_title.set_xalign(0)
-        card.append(label_title)
+        label_title.set_margin_start(4)
+        outer_card.append(label_title)
 
-        grid = Gtk.Grid(row_spacing=8, column_spacing=24)
+        # Inner Frame: Encloses only the data grid
+        inner_frame = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        inner_frame.add_css_class("telemetry-card-inner")
+
+        grid = Gtk.Grid(row_spacing=12, column_spacing=48)
+        grid.set_margin_top(4)
+        grid.set_margin_bottom(4)
         setattr(self, f"{title.lower().replace(' ', '_')}_grid", grid)
 
         for i, (name, attr_name) in enumerate(rows):
             name_label = Gtk.Label(label=name)
+            name_label.set_halign(Gtk.Align.START)
             name_label.set_xalign(0)
+            name_label.set_opacity(0.8)
             grid.attach(name_label, 0, i, 1, 1)
 
             val_label = Gtk.Label(label="—")
-            val_label.set_xalign(1)
+            val_label.set_halign(Gtk.Align.END)
             val_label.set_hexpand(True)
+            val_label.set_xalign(1)
             val_label.set_markup("<b>—</b>")
             grid.attach(val_label, 1, i, 1, 1)
             setattr(self, attr_name, val_label)
 
-        card.append(grid)
-        return card
+        inner_frame.append(grid)
+        outer_card.append(inner_frame)
+        return outer_card
 
     def _build_list_section(self):
         """Build the segmented control and stack for Favorites/Recent."""
@@ -174,13 +216,14 @@ class StatusPane(Gtk.Box):
         # Segmented Control
         segment_hbox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=0)
         segment_hbox.set_halign(Gtk.Align.CENTER)
-        segment_hbox.add_css_class("linked") # GTK style class for grouped buttons
+        segment_hbox.set_homogeneous(True)  # Force 50/50 split
+        segment_hbox.add_css_class("linked")
 
-        self.fav_seg_btn = Gtk.ToggleButton(label="FAVORITES")
+        self.fav_seg_btn = Gtk.ToggleButton(label="Favorites")
         self.fav_seg_btn.add_css_class("segment-button")
         self.fav_seg_btn.set_active(True)
-        
-        self.recent_seg_btn = Gtk.ToggleButton(label="RECENT")
+
+        self.recent_seg_btn = Gtk.ToggleButton(label="Recent")
         self.recent_seg_btn.add_css_class("segment-button")
         self.recent_seg_btn.set_group(self.fav_seg_btn)
 
@@ -191,7 +234,7 @@ class StatusPane(Gtk.Box):
         # Stack
         self.list_stack = Gtk.Stack()
         self.list_stack.set_transition_type(Gtk.StackTransitionType.SLIDE_LEFT_RIGHT)
-        
+
         # Favorites List
         self.fav_listbox = Gtk.ListBox()
         self.fav_listbox.set_selection_mode(Gtk.SelectionMode.NONE)
@@ -212,8 +255,16 @@ class StatusPane(Gtk.Box):
         self.append(list_vbox)
 
         # Connect signals
-        self.fav_seg_btn.connect("toggled", lambda b: self.list_stack.set_visible_child_name("favorites") if b.get_active() else None)
-        self.recent_seg_btn.connect("toggled", lambda b: self.list_stack.set_visible_child_name("recent") if b.get_active() else None)
+        self.fav_seg_btn.connect(
+            "toggled",
+            lambda b: (
+                self.list_stack.set_visible_child_name("favorites") if b.get_active() else None
+            ),
+        )
+        self.recent_seg_btn.connect(
+            "toggled",
+            lambda b: self.list_stack.set_visible_child_name("recent") if b.get_active() else None,
+        )
 
     def apply_status(self, status):
         """Update UI based on NordVPN status."""
@@ -226,20 +277,27 @@ class StatusPane(Gtk.Box):
 
         if state == "connected":
             self._update_ui_connected(status)
-            
+
             # History tracking logic
             server = status.get("Server", "Unknown")
             city = status.get("City", "Unknown")
             country = status.get("Country", "Unknown")
-            
+
             self.current_connection = {
                 "country": country.replace(" ", "_"),
                 "city": city.replace(" ", "_"),
             }
 
             if server != self.last_server:
-                self.add_history_entry(f"{city} - {country}", self.current_connection["country"], self.current_connection["city"], server)
+                self.add_history_entry(
+                    f"{city} - {country}",
+                    self.current_connection["country"],
+                    self.current_connection["city"],
+                    server,
+                )
                 self.last_server = server
+        elif state == "connecting":
+            self._update_ui_connecting()
         else:
             self._update_ui_disconnected()
             self.last_server = None
@@ -247,22 +305,21 @@ class StatusPane(Gtk.Box):
 
         # Refresh lists to update highlights
         self.refresh_lists()
-        
+
         if self.on_status_change:
             self.on_status_change(status)
         return False
 
     def _update_ui_disconnected(self):
         """Set UI to Disconnected state."""
-        self.unsecured_circle.set_opacity(1.0)
-        self.unsecured_label.set_opacity(1.0)
-        self.connected_circle.set_opacity(0.3)
-        self.connected_label.set_opacity(0.3)
-        self.pulsing_ring.set_visible(False)
-        
+        self.connecting_spinner.stop()
+        self.hero_stack.set_visible_child_name("unsecured")
+
         self.connect_btn.set_label("Connect")
         self.connect_btn.set_sensitive(True)
-        
+        self.connect_btn.remove_css_class("destructive-action")
+        self.connect_btn.add_css_class("btn-connect")
+
         # Clear telemetry
         self.ip_val.set_markup("<b>—</b>")
         self.proto_val.set_markup("<b>—</b>")
@@ -271,19 +328,28 @@ class StatusPane(Gtk.Box):
         self.uptime_val.set_markup("<b>—</b>")
         self.transfer_val.set_markup("<b>—</b>")
 
+    def _update_ui_connecting(self):
+        """Set UI to Connecting state."""
+        self.hero_stack.set_visible_child_name("connecting")
+        self.connecting_spinner.start()
+
+        self.connect_btn.set_label("Connecting...")
+        self.connect_btn.set_sensitive(False)
+
     def _update_ui_connected(self, status):
         """Set UI to Connected state."""
-        self.unsecured_circle.set_opacity(0.3)
-        self.unsecured_label.set_opacity(0.3)
-        self.connected_circle.set_opacity(1.0)
-        self.connected_label.set_opacity(1.0)
-        self.pulsing_ring.set_visible(True)
-        
+        self.connecting_spinner.stop()
+        self.hero_stack.set_visible_child_name("connected")
+
         city = status.get("City", "VPN")
         self.connected_label.set_markup(f"<b>CONNECTED TO {city.upper()}</b>")
-        
+
         self.connect_btn.set_label("Disconnect")
         self.connect_btn.set_sensitive(True)
+        # Clear all possible action classes first
+        self.connect_btn.remove_css_class("btn-connect")
+        self.connect_btn.remove_css_class("suggested-action")
+        self.connect_btn.add_css_class("destructive-action")
 
         # Update telemetry
         self.ip_val.set_markup(f"<b>{status.get('IP', '—')}</b>")
@@ -315,7 +381,7 @@ class StatusPane(Gtk.Box):
     def on_reconnect_clicked(self, button):
         """Execute reconnect."""
         button.set_sensitive(False)
-        
+
         def worker():
             success, message = self.manager.reconnect()
             GLib.idle_add(self.on_action_done, success, message)
@@ -328,10 +394,10 @@ class StatusPane(Gtk.Box):
         self.reconnect_btn.set_sensitive(True)
         if next_label:
             self.connect_btn.set_label(next_label)
-        
+
         if not success and self.app_ref:
             self.app_ref.show_toast(message, is_error=True)
-        
+
         # Trigger immediate status poll
         if self.app_ref:
             self.app_ref.poll_status()
@@ -344,7 +410,7 @@ class StatusPane(Gtk.Box):
             "country": country,
             "city": city,
             "server": server,
-            "time": datetime.now().strftime("%H:%M:%S")
+            "time": datetime.now().strftime("%H:%M:%S"),
         }
         self.connection_history.insert(0, entry)
         if len(self.connection_history) > 10:
@@ -360,7 +426,7 @@ class StatusPane(Gtk.Box):
         self.fav_listbox.remove_all()
         if not self.app_ref:
             return
-        
+
         favorites = self.app_ref.config.get("favorites", [])
         if not favorites:
             self.fav_listbox.append(self._create_empty_row("No favorites added yet."))
@@ -390,7 +456,7 @@ class StatusPane(Gtk.Box):
         """Create a styled card for the lists."""
         row = Gtk.ListBoxRow()
         row.add_css_class("card-row")
-        
+
         hbox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
         hbox.set_margin_top(8)
         hbox.set_margin_bottom(8)
@@ -400,38 +466,41 @@ class StatusPane(Gtk.Box):
         # Text labels
         vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
         vbox.set_hexpand(True)
-        
+
         name = data.get("text") or f"{data.get('city')} - {data.get('country')}"
         name_label = Gtk.Label(label=name)
         name_label.set_xalign(0)
         name_label.set_markup(f"<b>{name}</b>")
         vbox.append(name_label)
-        
+
         if not is_favorite:
             time_label = Gtk.Label(label=data.get("time"))
             time_label.set_xalign(0)
             time_label.set_opacity(0.6)
             vbox.append(time_label)
-        
+
         hbox.append(vbox)
 
         # Action Buttons
         actions_hbox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
-        
+
         connect_btn = Gtk.Button()
         connect_btn.set_icon_name("network-vpn-symbolic")
+        connect_btn.add_css_class("flat")
         connect_btn.set_tooltip_text("Connect")
         connect_btn.connect("clicked", lambda *_: self._on_list_connect(data))
         actions_hbox.append(connect_btn)
 
         expand_btn = Gtk.Button()
         expand_btn.set_icon_name("go-next-symbolic")
+        expand_btn.add_css_class("flat")
         expand_btn.set_tooltip_text("Details")
         actions_hbox.append(expand_btn)
 
         if is_favorite:
             remove_btn = Gtk.Button()
             remove_btn.set_icon_name("window-close-symbolic")
+            remove_btn.add_css_class("flat")
             remove_btn.connect("clicked", lambda *_: self._on_remove_favorite(data))
             actions_hbox.append(remove_btn)
 
@@ -443,7 +512,7 @@ class StatusPane(Gtk.Box):
         """Handle connect click from list card."""
         country = data.get("country")
         city = data.get("city")
-        
+
         self.connect_btn.set_sensitive(False)
         self.connect_btn.set_label("Connecting...")
 
