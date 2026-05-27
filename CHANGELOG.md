@@ -1,5 +1,12 @@
 # Summit Changelog
 
+## v0.9.1 - Reconnect Location Targeting Fix
+
+### Fixes & Improvements
+- **Explicit Reconnect Targeting**: The "Reconnect" button now reconnects to the exact country and city you were last connected to, bypassing the NordVPN daemon's dynamic recommendation engine.
+- **Location Persistence**: Automatically captures and stores the last successful connection's city and country (`last_country` and `last_city`) in the local `config.json` upon connecting.
+- **Backwards Compatibility**: Safely falls back to bare `nordvpn connect` (dynamic recommendation) if no previous session location exists in configuration.
+
 ## v0.9.0 - Status Tab Redesign & Integrated Dashboard
 
 ### Features & UI Updates

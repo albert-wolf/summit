@@ -159,8 +159,10 @@ class SummitManager:
         self.clear_cache()
         return self._command_result(stdout, stderr, returncode)
 
-    def reconnect(self) -> Tuple[bool, str]:
-        """Reconnect to the last server. Returns (success, message)."""
+    def reconnect(self, country: Optional[str] = None, city: Optional[str] = None) -> Tuple[bool, str]:
+        """Reconnect to the last server or a specific location if provided. Returns (success, message)."""
+        if country:
+            return self.connect(country, city)
         stdout, stderr, returncode = self.run_command(["connect"])
         self.clear_cache()
         return self._command_result(stdout, stderr, returncode)

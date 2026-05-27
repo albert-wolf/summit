@@ -288,6 +288,12 @@ class StatusPane(Gtk.Box):
                 "city": city.replace(" ", "_"),
             }
 
+            # Persist successful connection destination to local config
+            if self.app_ref and country != "Unknown" and city != "Unknown":
+                self.app_ref.config["last_country"] = self.current_connection["country"]
+                self.app_ref.config["last_city"] = self.current_connection["city"]
+                self.app_ref.save_config()
+
             if server != self.last_server:
                 self.add_history_entry(
                     f"{city} - {country}",
@@ -382,8 +388,12 @@ class StatusPane(Gtk.Box):
         """Execute reconnect."""
         button.set_sensitive(False)
 
+        # Get last target city and country from config if available
+        last_country = self.app_ref.config.get("last_country") if self.app_ref else None
+        last_city = self.app_ref.config.get("last_city") if self.app_ref else None
+
         def worker():
-            success, message = self.manager.reconnect()
+            success, message = self.manager.reconnect(last_country, last_city)
             GLib.idle_add(self.on_action_done, success, message)
 
         threading.Thread(target=worker, daemon=True).start()
