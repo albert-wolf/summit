@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 import sys
 import json
+import subprocess
+import shutil
 import warnings
 import gi
 import logging
@@ -168,6 +170,30 @@ class SummitApp(Gtk.Application):
     def __init__(self):
         super().__init__(application_id="io.github.summit", flags=Gio.ApplicationFlags.NON_UNIQUE)
         self.manager = SummitManager()
+        
+        # Check for mock status flag (used for automated screenshots and privacy)
+        if "--mock-status" in sys.argv:
+            self.manager.is_logged_in = lambda: True
+            self.manager.is_installed = lambda: True
+            self.manager.get_status = lambda: {
+                "Status": "Connected",
+                "Country": "United States",
+                "City": "Las Vegas",
+                "IP": "198.51.100.45",
+                "Current protocol": "UDP",
+                "Current technology": "NordLynx",
+                "Server": "us1425",
+                "Uptime": "02:14:35",
+                "Transfer": "14.2 MB Up / 158.4 MB Down"
+            }
+            self.manager.get_meshnet_peers = lambda: (False, [])
+            self.manager.get_this_device_info = lambda: None
+            
+            # Prevent connect/disconnect actions from running actual commands
+            self.manager.connect = lambda country, city=None: (True, "Mock Connect Success")
+            self.manager.disconnect = lambda: (True, "Mock Disconnect Success")
+            self.manager.reconnect = lambda country=None, city=None: (True, "Mock Reconnect Success")
+
         self.window = None
         self.config = {}
         self.poll_timer = None
@@ -228,6 +254,9 @@ class SummitApp(Gtk.Application):
 
                 self.build_window()
                 self.window.present()
+                
+                if "--screenshot-mode" in sys.argv:
+                    GLib.timeout_add(3000, self.take_screenshot_step, 0)
             except Exception as e:
                 logger.error(f"Failed to build window: {e}", exc_info=True)
 
@@ -371,11 +400,64 @@ class SummitApp(Gtk.Application):
         self.save_config()
         return False
 
+    def take_screenshot_step(self, step):
+        tabs = ["status", "servers", "settings", "ports", "meshnet"]
+        if step >= len(tabs):
+            self.quit()
+            return False
+
+        tab_name = tabs[step]
+        print(f"Screenshot mode - cycling to tab: {tab_name}")
+        self.window.tab_buttons[tab_name].set_active(True)
+
+        def capture():
+            try:
+                screenshot_dir = Path(__file__).parent.parent / "docs" / "screenshots"
+                screenshot_dir.mkdir(parents=True, exist_ok=True)
+
+                output_path = screenshot_dir / f"{tab_name}.png"
+
+                # Check for available screenshot tools in order of preference
+                if shutil.which("maim"):
+                    try:
+                        window_id = subprocess.check_output(
+                            ["xdotool", "search", "--onlyvisible", "--class", "summit"]
+                        ).decode().strip().split("\n")[0]
+                        subprocess.run(["maim", "-i", window_id, str(output_path)], check=True)
+                        print(f"Captured screen using maim: {output_path}")
+                    except Exception:
+                        subprocess.run(["maim", str(output_path)], check=True)
+                        print(f"Captured screen using full maim fallback: {output_path}")
+                elif shutil.which("scrot"):
+                    subprocess.run(["scrot", "-u", str(output_path)], check=True)
+                    print(f"Captured screen using scrot: {output_path}")
+                elif shutil.which("gnome-screenshot"):
+                    # -w takes active window
+                    subprocess.run(["gnome-screenshot", "-w", "-f", str(output_path)], check=True)
+                    print(f"Captured screen using gnome-screenshot: {output_path}")
+                elif shutil.which("cinnamon-screenshot"):
+                    # -w takes active window
+                    subprocess.run(["cinnamon-screenshot", "-w", "-f", str(output_path)], check=True)
+                    print(f"Captured screen using cinnamon-screenshot: {output_path}")
+                else:
+                    print("Error: no screenshot utility (maim, scrot, gnome-screenshot, cinnamon-screenshot) found.")
+            except Exception as e:
+                print(f"Screenshot capture failed: {e}")
+
+            # Queue next step
+            GLib.timeout_add(1000, self.take_screenshot_step, step + 1)
+
+        # Allow GTK 1 second to render the tab completely before snapping
+        GLib.timeout_add(1000, capture)
+        return False
+
 
 def main():
     GLib.set_prgname("summit")
     app = SummitApp()
-    return app.run(sys.argv)
+    # Filter out custom arguments so GTK's strict CLI parser doesn't intercept them
+    gtk_args = [arg for arg in sys.argv if arg not in ("--mock-status", "--screenshot-mode")]
+    return app.run(gtk_args)
 
 
 if __name__ == "__main__":
