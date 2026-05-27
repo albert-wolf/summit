@@ -2,7 +2,7 @@
 set -e
 
 PACKAGE=summit
-VERSION=0.8.5
+VERSION=0.9.0
 BUILD_DIR=build/${PACKAGE}
 
 DIST_DIR=dist

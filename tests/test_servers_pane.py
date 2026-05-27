@@ -6,6 +6,21 @@ import os
 # Add src directory to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
+import gi
+
+gi.require_version("Gio", "2.0")
+from gi.repository import Gio
+
+resource_path = os.path.join(
+    os.path.dirname(__file__), "..", "src", "resources", "summit.gresource"
+)
+if os.path.exists(resource_path):
+    try:
+        resource = Gio.Resource.load(resource_path)
+        Gio.resources_register(resource)
+    except Exception as e:
+        print(f"Warning: Failed to load resources: {e}")
+
 from servers_pane import ServersPane
 
 

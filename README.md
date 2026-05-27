@@ -1,11 +1,10 @@
-# Summit — GTK4 NordVPN GUI (v0.8.4 Beta)
+# Summit — GTK4 NordVPN GUI (v0.9.1)
 An unofficial, community-developed, professional GTK4 graphical interface for the NordVPN command-line tool on Linux.
-
-<img width="967" height="629" alt="Screenshot from 2026-03-29 02-07-40" src="https://github.com/user-attachments/assets/58a3c263-2851-49af-8d59-0f723daa659f" />
-<img width="967" height="629" alt="Screenshot from 2026-03-29 02-08-08" src="https://github.com/user-attachments/assets/391774d4-6ebf-4997-a48b-1230463cb61a" />
-<img width="967" height="629" alt="Screenshot from 2026-03-29 02-08-27" src="https://github.com/user-attachments/assets/0c6eea8d-7ad1-4960-b985-c2eb6a2e2913" />
-<img width="967" height="629" alt="Screenshot from 2026-03-29 02-10-35" src="https://github.com/user-attachments/assets/10b796ec-7069-458e-a6ec-9c2f68537eb7" />
-<img width="967" height="629" alt="Screenshot from 2026-03-29 02-10-56" src="https://github.com/user-attachments/assets/afff5aa2-2302-45c8-812c-7856a651784f" />
+<img width="967" height="629" alt="Summit Status Tab" src="docs/screenshots/status.png" />
+<img width="967" height="629" alt="Summit Servers Tab" src="docs/screenshots/servers.png" />
+<img width="967" height="629" alt="Summit Settings Tab" src="docs/screenshots/settings.png" />
+<img width="967" height="629" alt="Summit Ports Tab" src="docs/screenshots/ports.png" />
+<img width="967" height="629" alt="Summit Meshnet Tab" src="docs/screenshots/meshnet.png" />
 
 ## ⚠️ Disclaimer
 
@@ -45,7 +44,7 @@ An unofficial, community-developed, professional GTK4 graphical interface for th
 Download the latest release from the `dist/` folder or the Releases page.
 
 ```bash
-sudo dpkg -i dist/summit_0.8.4_all.deb
+sudo dpkg -i dist/summit_0.9.1_all.deb
 sudo apt-get install -f  # Resolve any missing dependencies
 summit
 ```

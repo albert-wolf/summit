@@ -1,6 +1,6 @@
 # Summit Changelog
 
-## v0.8.5 - Status Tab Redesign & Integrated Dashboard
+## v0.9.0 - Status Tab Redesign & Integrated Dashboard
 
 ### Features & UI Updates
 - **Complete Redesign**: The Status tab is now a centralized dashboard with a modern, high-impact aesthetic.
