@@ -1,5 +1,13 @@
 # Summit Changelog
 
+## v0.9.2 - Hybrid Polling Migration & Efficiency Overhaul
+
+### Features & Architecture
+- **Event-Driven Status Updates**: Migrated background daemon status polling from a constant 2-second interval to a native event-driven pattern using `Gio.NetworkMonitor`. Status updates are triggered instantaneously upon any network interface transitions (e.g. connecting/disconnecting the VPN).
+- **Focus-Based Active Throttling**: Added support for tracking window focus states (`notify::is-active` property). Active status polling is paused completely when the application window is minimized or defocused, conserving CPU cycles.
+- **Safety Buffering**: Registered a relaxed 10-second (10000ms) safety timer that runs ONLY when the application is active and focused, with concurrent-execution lock protections preventing duplicate polling subprocesses.
+- **Clean Quality Compliance**: Replaced all remaining raw stdout `print()` statements with standard `logging` levels (`logger.info`/`logger.error`) across the codebase.
+
 ## v0.9.1 - Reconnect Location Targeting Fix
 
 ### Fixes & Improvements

@@ -1,3 +1,9 @@
+summit (0.9.2) unstable; urgency=low
+
+  * Release version v0.9.2.
+
+ -- Albert A. Wolf <Wolf-GitHub@pm.me>  Wed, 27 May 2026 21:37:27 -0500
+
 summit (0.8.1) stable; urgency=medium
 
   * Modernization Release: Blueprint migration and Flatpak support

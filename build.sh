@@ -2,7 +2,7 @@
 set -e
 
 PACKAGE=summit
-VERSION=0.9.1
+VERSION=$(grep -m1 'version =' pyproject.toml | cut -d'"' -f2)
 BUILD_DIR=build/${PACKAGE}
 
 DIST_DIR=dist
@@ -54,6 +54,7 @@ mkdir -p "${BUILD_DIR}/usr/share/applications"
 
 echo "[5/8] Copying DEBIAN control files..."
 cp debian/control    "${BUILD_DIR}/DEBIAN/control"
+sed -i "s/^Version: .*/Version: ${VERSION}/" "${BUILD_DIR}/DEBIAN/control"
 cp debian/postinst   "${BUILD_DIR}/DEBIAN/postinst"
 cp debian/changelog  "${BUILD_DIR}/DEBIAN/changelog"
 cp debian/compat     "${BUILD_DIR}/DEBIAN/compat"

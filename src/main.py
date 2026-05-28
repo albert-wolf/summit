@@ -95,6 +95,27 @@ from meshnet_pane import MeshnetPane
 from toast import ToastOverlay
 
 
+def get_version():
+    try:
+        import importlib.metadata
+
+        return importlib.metadata.version("summit")
+    except Exception:
+        try:
+            pyproject_path = Path(__file__).parent.parent / "pyproject.toml"
+            if not pyproject_path.exists():
+                pyproject_path = Path(__file__).parent / "pyproject.toml"
+            if pyproject_path.exists():
+                with open(pyproject_path, "r") as f:
+                    content = f.read()
+                m = re.search(r'version\s*=\s*["\']([^"\']+)["\']', content)
+                if m:
+                    return m.group(1)
+        except Exception:
+            pass
+    return "0.9.2"
+
+
 @Gtk.Template(resource_path="/io/github/summit/ui/main_window.ui")
 class SummitWindow(Gtk.ApplicationWindow):
     """Main application window using Gtk.Template."""
@@ -104,6 +125,7 @@ class SummitWindow(Gtk.ApplicationWindow):
     header_bar = Gtk.Template.Child("header_bar")
     main_stack = Gtk.Template.Child("main_stack")
     toast_overlay = Gtk.Template.Child("toast_overlay")
+    app_title_label = Gtk.Template.Child("app_title_label")
 
     status_btn = Gtk.Template.Child("status_btn")
     servers_btn = Gtk.Template.Child("servers_btn")
@@ -136,6 +158,9 @@ class SummitWindow(Gtk.ApplicationWindow):
 
         # Initialize ToastOverlay wrapper
         self.toast_overlay_wrapper = ToastOverlay(self.toast_overlay)
+
+        # Dynamically set headerbar app title with version
+        self.app_title_label.set_label(f"Summit {get_version()}")
 
     def on_tab_button_toggled(self, button: Gtk.ToggleButton, tab_name: str):
         if self._updating_tabs:
@@ -170,7 +195,7 @@ class SummitApp(Gtk.Application):
     def __init__(self):
         super().__init__(application_id="io.github.summit", flags=Gio.ApplicationFlags.NON_UNIQUE)
         self.manager = SummitManager()
-        
+
         # Check for mock status flag (used for automated screenshots and privacy)
         if "--mock-status" in sys.argv:
             self.manager.is_logged_in = lambda: True
@@ -184,19 +209,28 @@ class SummitApp(Gtk.Application):
                 "Current technology": "NordLynx",
                 "Server": "us1425",
                 "Uptime": "02:14:35",
-                "Transfer": "14.2 MB Up / 158.4 MB Down"
+                "Transfer": "14.2 MB Up / 158.4 MB Down",
             }
             self.manager.get_meshnet_peers = lambda: (False, [])
             self.manager.get_this_device_info = lambda: None
-            
+
             # Prevent connect/disconnect actions from running actual commands
             self.manager.connect = lambda country, city=None: (True, "Mock Connect Success")
             self.manager.disconnect = lambda: (True, "Mock Disconnect Success")
-            self.manager.reconnect = lambda country=None, city=None: (True, "Mock Reconnect Success")
+            self.manager.reconnect = lambda country=None, city=None: (
+                True,
+                "Mock Reconnect Success",
+            )
 
         self.window = None
         self.config = {}
         self.poll_timer = None
+        self._is_polling = False
+
+        # Set up Network Monitor to capture network changes instantly
+        self.network_monitor = Gio.NetworkMonitor.get_default()
+        if self.network_monitor:
+            self.network_monitor.connect("network-changed", self.on_network_changed)
 
         config_dir = Path.home() / ".config" / "summit"
         config_dir.mkdir(parents=True, exist_ok=True)
@@ -221,7 +255,7 @@ class SummitApp(Gtk.Application):
         dialog = Gtk.AboutDialog()
         dialog.set_transient_for(self.window)
         dialog.set_program_name("Summit")
-        dialog.set_version("0.9.1")
+        dialog.set_version(get_version())
         dialog.set_authors(["Wolf-GitHub <Wolf-GitHub@pm.me>"])
         dialog.set_comments("A GTK4 NordVPN Client for LMDE 7")
         dialog.set_website("https://github.com/Wolf-GitHub/Summit")
@@ -254,7 +288,7 @@ class SummitApp(Gtk.Application):
 
                 self.build_window()
                 self.window.present()
-                
+
                 if "--screenshot-mode" in sys.argv:
                     GLib.timeout_add(3000, self.take_screenshot_step, 0)
             except Exception as e:
@@ -290,6 +324,9 @@ class SummitApp(Gtk.Application):
         self.window.ports_pane_box.append(self.ports_pane)
         self.window.meshnet_pane_box.append(self.meshnet_pane)
 
+        # Track window focus state to pause/resume polling
+        self.window.connect("notify::is-active", self.on_window_active_changed)
+
         self.start_polling()
         GLib.idle_add(self.check_login_status)
 
@@ -321,7 +358,7 @@ class SummitApp(Gtk.Application):
             "window_height": 650,
             "last_country": "United_States",
             "last_city": "Saint_Louis",
-            "poll_interval_ms": 2000,
+            "poll_interval_ms": 10000,
             "autoconnect_enabled": False,
             "autoconnect_country": "",
             "autoconnect_city": "",
@@ -356,10 +393,38 @@ class SummitApp(Gtk.Application):
             self.window.toast_overlay_wrapper.show_toast(message, is_error)
 
     def start_polling(self):
-        interval = self.config.get("poll_interval_ms", 2000)
-        self.poll_timer = GLib.timeout_add(interval, self.poll_status)
+        # Only start if safety polling timer is not already active
+        if not self.poll_timer:
+            interval = self.config.get("poll_interval_ms", 10000)
+            if interval < 10000:
+                interval = 10000
+            self.poll_timer = GLib.timeout_add(interval, self._safety_poll_callback)
+            logger.info(f"Safety polling started at {interval}ms interval.")
+
+    def _safety_poll_callback(self):
+        self.poll_status()
+        return True
+
+    def stop_polling(self):
+        if self.poll_timer:
+            GLib.source_remove(self.poll_timer)
+            self.poll_timer = None
+            logger.info("Safety polling stopped.")
+
+    def resume_polling(self):
+        logger.info("Resuming polling due to window activation.")
+        self.start_polling()
+        self.poll_status()
+
+    def pause_polling(self):
+        logger.info("Pausing polling due to window defocus.")
+        self.stop_polling()
 
     def poll_status(self):
+        if getattr(self, "_is_polling", False):
+            return
+        self._is_polling = True
+
         def worker():
             try:
                 status = self.manager.get_status()
@@ -367,11 +432,26 @@ class SummitApp(Gtk.Application):
                     GLib.idle_add(self.status_pane.apply_status, status)
             except Exception as e:
                 logger.error(f"Poll failed: {e}")
+            finally:
+                self._is_polling = False
 
         import threading
 
         threading.Thread(target=worker, daemon=True).start()
-        return True
+
+    def on_window_active_changed(self, window, pspec):
+        is_active = window.get_property("is-active")
+        logger.info(f"Window active state changed: {is_active}")
+        if is_active:
+            self.resume_polling()
+        else:
+            self.pause_polling()
+
+    def on_network_changed(self, monitor, network_available):
+        logger.info(
+            f"Network changed: available={network_available}. Triggering immediate status poll."
+        )
+        self.poll_status()
 
     def on_status_change(self, status):
         pass
@@ -395,8 +475,7 @@ class SummitApp(Gtk.Application):
         self.window.tab_buttons["servers"].set_active(True)
 
     def on_window_close(self, window):
-        if self.poll_timer:
-            GLib.source_remove(self.poll_timer)
+        self.stop_polling()
         self.save_config()
         return False
 
@@ -407,7 +486,7 @@ class SummitApp(Gtk.Application):
             return False
 
         tab_name = tabs[step]
-        print(f"Screenshot mode - cycling to tab: {tab_name}")
+        logger.info(f"Screenshot mode - cycling to tab: {tab_name}")
         self.window.tab_buttons[tab_name].set_active(True)
 
         def capture():
@@ -420,29 +499,38 @@ class SummitApp(Gtk.Application):
                 # Check for available screenshot tools in order of preference
                 if shutil.which("maim"):
                     try:
-                        window_id = subprocess.check_output(
-                            ["xdotool", "search", "--onlyvisible", "--class", "summit"]
-                        ).decode().strip().split("\n")[0]
+                        window_id = (
+                            subprocess.check_output(
+                                ["xdotool", "search", "--onlyvisible", "--class", "summit"]
+                            )
+                            .decode()
+                            .strip()
+                            .split("\n")[0]
+                        )
                         subprocess.run(["maim", "-i", window_id, str(output_path)], check=True)
-                        print(f"Captured screen using maim: {output_path}")
+                        logger.info(f"Captured screen using maim: {output_path}")
                     except Exception:
                         subprocess.run(["maim", str(output_path)], check=True)
-                        print(f"Captured screen using full maim fallback: {output_path}")
+                        logger.info(f"Captured screen using full maim fallback: {output_path}")
                 elif shutil.which("scrot"):
                     subprocess.run(["scrot", "-u", str(output_path)], check=True)
-                    print(f"Captured screen using scrot: {output_path}")
+                    logger.info(f"Captured screen using scrot: {output_path}")
                 elif shutil.which("gnome-screenshot"):
                     # -w takes active window
                     subprocess.run(["gnome-screenshot", "-w", "-f", str(output_path)], check=True)
-                    print(f"Captured screen using gnome-screenshot: {output_path}")
+                    logger.info(f"Captured screen using gnome-screenshot: {output_path}")
                 elif shutil.which("cinnamon-screenshot"):
                     # -w takes active window
-                    subprocess.run(["cinnamon-screenshot", "-w", "-f", str(output_path)], check=True)
-                    print(f"Captured screen using cinnamon-screenshot: {output_path}")
+                    subprocess.run(
+                        ["cinnamon-screenshot", "-w", "-f", str(output_path)], check=True
+                    )
+                    logger.info(f"Captured screen using cinnamon-screenshot: {output_path}")
                 else:
-                    print("Error: no screenshot utility (maim, scrot, gnome-screenshot, cinnamon-screenshot) found.")
+                    logger.error(
+                        "Error: no screenshot utility (maim, scrot, gnome-screenshot, cinnamon-screenshot) found."
+                    )
             except Exception as e:
-                print(f"Screenshot capture failed: {e}")
+                logger.error(f"Screenshot capture failed: {e}")
 
             # Queue next step
             GLib.timeout_add(1000, self.take_screenshot_step, step + 1)

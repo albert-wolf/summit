@@ -7,9 +7,10 @@ import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 import gi
+
 gi.require_version("Gio", "2.0")
 gi.require_version("Gtk", "4.0")
-from gi.repository import Gio, Gtk
+from gi.repository import Gio
 
 # Register resources if they exist for tests
 resource_path = os.path.join(
@@ -32,9 +33,9 @@ class TestSummitManagerReconnect(unittest.TestCase):
         """Test reconnect without arguments falls back to bare connect."""
         mock_run.return_value = ("Success", "", 0)
         manager = SummitManager()
-        
+
         success, message = manager.reconnect()
-        
+
         assert success is True
         mock_run.assert_called_with(["connect"])
 
@@ -43,9 +44,9 @@ class TestSummitManagerReconnect(unittest.TestCase):
         """Test reconnect with arguments targets specific country and city."""
         mock_run.return_value = ("Success", "", 0)
         manager = SummitManager()
-        
+
         success, message = manager.reconnect("United_States", "Saint_Louis")
-        
+
         assert success is True
         mock_run.assert_called_with(["connect", "United_States", "Saint_Louis"])
 
@@ -69,9 +70,9 @@ class TestStatusPaneReconnectPersistence(unittest.TestCase):
             "City": "Saint Louis",
             "Server": "us1234",
         }
-        
+
         self.pane.apply_status(status_data)
-        
+
         assert self.mock_app.config["last_country"] == "United_States"
         assert self.mock_app.config["last_city"] == "Saint_Louis"
         assert self.mock_app.save_config.called
@@ -84,9 +85,9 @@ class TestStatusPaneReconnectPersistence(unittest.TestCase):
             "City": "Unknown",
             "Server": "unknown-server",
         }
-        
+
         self.pane.apply_status(status_data)
-        
+
         assert self.mock_app.config["last_country"] == ""
         assert self.mock_app.config["last_city"] == ""
         assert not self.mock_app.save_config.called
@@ -97,18 +98,18 @@ class TestStatusPaneReconnectPersistence(unittest.TestCase):
         self.mock_manager.reconnect.return_value = (True, "Success")
         self.mock_app.config["last_country"] = "United_States"
         self.mock_app.config["last_city"] = "Saint_Louis"
-        
+
         mock_button = Mock()
         self.pane.on_reconnect_clicked(mock_button)
-        
+
         # Verify thread was started
         assert mock_thread.called
-        
+
         # Extract the worker function from thread call
         worker_func = mock_thread.call_args[1]["target"]
-        
+
         # Run worker function
         worker_func()
-        
+
         # Verify manager.reconnect was called with the config targets
         self.mock_manager.reconnect.assert_called_with("United_States", "Saint_Louis")
